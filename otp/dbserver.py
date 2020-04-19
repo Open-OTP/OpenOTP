@@ -1,5 +1,5 @@
-import uvloop
-uvloop.install()
+from otp import config
+
 import asyncio
 
 
@@ -105,7 +105,7 @@ class DBServer(DownstreamMessageDirector):
 
     async def run(self):
         await self.backend.setup()
-        await self.connect('127.0.0.1', int(config['MessageDirector']['PORT']))
+        await self.connect(config['MessageDirector.HOST'], config['MessageDirector.PORT'])
         await self.route()
 
     async def create_object(self, sender, context, dclass, fields):

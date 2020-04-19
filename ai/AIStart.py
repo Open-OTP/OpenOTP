@@ -1,6 +1,6 @@
+from otp import config
+
 import asyncio
-import uvloop
-uvloop.install()
 
 from direct.directnotify import DirectNotify
 from direct.showbase import Messenger, BulletinBoard, EventManager, JobManager

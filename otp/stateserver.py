@@ -1,6 +1,6 @@
+from otp import config
+
 import asyncio
-import uvloop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 from otp.messagedirector import MDUpstreamProtocol, DownstreamMessageDirector
@@ -494,7 +494,7 @@ class StateServer(DownstreamMessageDirector, ChannelAllocator):
         print('err', context)
 
     async def run(self):
-        await self.connect('127.0.0.1', int(config['MessageDirector']['PORT']))
+        await self.connect(config['MessageDirector.HOST'], config['MessageDirector.PORT'])
         await self.route()
 
     def on_upstream_connect(self):

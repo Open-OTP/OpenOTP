@@ -1,3 +1,5 @@
+from otp import config
+
 import aiomysql
 from typing import Tuple, List
 import warnings

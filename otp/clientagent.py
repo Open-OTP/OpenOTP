@@ -1,12 +1,11 @@
+from otp import config
+
 import asyncio
-import uvloop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 from dc.util import Datagram
 from otp.networking import ChannelAllocator, ToontownProtocol, DatagramFuture
 from otp.messagedirector import DownstreamMessageDirector, MDParticipant, MDUpstreamProtocol, UpstreamServer
 
-import par
 import time
 
 
@@ -806,8 +805,8 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
     downstream_protocol = ClientProtocol
     upstream_protocol = ClientAgentProtocol
 
-    min_channel = 2000000000
-    max_channel = 2000999999
+    min_channel = config['ClientAgent.MIN_CHANNEL']
+    max_channel = config['ClientAgent.MAX_CHANNEL']
 
     def __init__(self, loop):
         DownstreamMessageDirector.__init__(self, loop)
@@ -830,15 +829,12 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
         print('err', context)
 
     async def run(self):
-        await self.connect('127.0.0.1', int(config['MessageDirector']['PORT']))
-        self.listen_task = self.loop.create_task(self.listen('127.0.0.1', int(config['ClientAgent']['PORT'])))
+        await self.connect(config['MessageDirector.HOST'], config['MessageDirector.PORT'])
+        self.listen_task = self.loop.create_task(self.listen(config['ClientAgent.HOST'], config['ClientAgent.PORT']))
         await self.route()
 
     def on_upstream_connect(self):
-        dg = Datagram()
-        dg.add_server_header([4000000], 1, SERVER_PING)
-        print('sending ping')
-        self.send_datagram(dg)
+        pass
 
     def context(self):
         self._context = (self._context + 1) & 0xFFFFFFFF

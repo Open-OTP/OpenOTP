@@ -1,6 +1,4 @@
-import uvloop
-uvloop.install()
-
+from otp import config
 from otp.networking import ToontownProtocol, MDParticipant, Service, UpstreamServer, DownstreamClient
 from dc.messagetypes import *
 from dc.util import Datagram
@@ -141,7 +139,7 @@ class MasterMessageDirector(MessageDirector, UpstreamServer):
 
     async def run(self):
         self.loop.create_task(self.route())
-        await self.listen('127.0.0.1', int(config['MessageDirector']['PORT']))
+        await self.listen(config['MessageDirector.HOST'], config['MessageDirector.PORT'])
 
 
 class MDUpstreamProtocol(ToontownProtocol, MDParticipant):

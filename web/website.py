@@ -1,5 +1,4 @@
-import uvloop
-uvloop.install()
+from otp import config
 
 import asyncio
 from aiohttp import web
