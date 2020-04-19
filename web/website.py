@@ -13,6 +13,9 @@ from Crypto.Cipher import AES
 import json
 
 
+import os
+
+
 SECRET = b'N)\x8fgj\x1a~\\\x1f\x1e\xa54\xc9\xd9\xf5\x83'
 
 logging.basicConfig(level=logging.DEBUG)
@@ -30,68 +33,32 @@ table_creation = '''CREATE TABLE accounts (
 );
 '''
 
-
-def get_file_info(fn):
-    file_hash = hashlib.md5()
-
-    buffer = 4096
-
-    with open(fn, 'rb') as f:
-        f.seek(0, 2)
-        size = f.tell()
-        f.seek(0, 0)
-
-        while f.tell() != size:
-            file_hash.update(f.read(buffer))
-
-    return size, file_hash.digest().hex()
+DIR = config['WebServer.CONTENT_DIR']
+PATCHER_VER_FILE = os.path.join(DIR, 'patcher.ver')
+PATCHER_STARTSHOW_FILE = os.path.join(DIR, 'patcher.startshow')
+HOST = config['WebServer.HOST']
+PORT = config['WebServer.PORT']
 
 
-import os
+if config['WebServer.WRITE_PATCH_FILES']:
+    print('Writing patcher files...')
+    from . import patcher
 
-INSTALL_FILES = {
-
-}
-
-patcher_info = []
-required_install_files = []
-file_versions = []
-
-EXTRACT = 1
-REQUIRED = 1 << 1
-OPTIONAL = 1 << 2
-
-DIR = os.path.join('web', 'content')
-
-
-for fn in os.listdir(DIR):
-    if not fn.startswith('phase'):
-        continue
-    fp = os.path.join(DIR, fn)
-    size, file_hash = get_file_info(fp)
-
-    INSTALL_FILES[fn] = (size, file_hash)
-
-    patcher_info.append(f'FILE_{fn}.v1.0.0={size} {file_hash}')
-    required_install_files.append(f'{fn}:{REQUIRED}')
-    file_versions.append(f'FILE_{fn}.current=v1.0.0')
-
-patcher_info = "\n".join(patcher_info)
-file_versions = "\n".join(file_versions)
-
-
-GAME_WHITELIST_URL = 'http://127.0.0.1:8080/'
-LOGIN_API_URL = 'http://127.0.0.1:8080/login'
-
-PATCHER_VER = f'''REQUIRED_INSTALL_FILES={" ".join(required_install_files)}
-{file_versions}
-{patcher_info}
-GAME_WHITELIST_URL={GAME_WHITELIST_URL}'''
+    with open(PATCHER_VER_FILE, 'w+') as f:
+        f.write(patcher.PATCHER_VER)
+    with open(PATCHER_STARTSHOW_FILE, 'w+') as f:
+        f.write(patcher.PATCHER_STARTSHOW)
 
 
 async def handle_patcher(request):
     print(request.method, request.path, request.query_string)
-    return web.Response(text=PATCHER_VER)
+    return web.FileResponse(PATCHER_VER_FILE)
+
+
+async def handle_start_show(request):
+    print(request.method, request.path, request.query_string)
+
+    return web.FileResponse(PATCHER_STARTSHOW_FILE)
 
 
 with open(os.path.join(DIR, 'twhitelist.dat'), 'r', encoding='windows-1252') as f:
@@ -103,19 +70,6 @@ async def handle_whitelist(request):
     return web.Response(text=WHITELIST)
 
 
-PATCHER_STARTSHOW = f'''
-GLOBAL_URL_1=http://127.0.0.1:8080/releaseNotes.html
-GLOBAL_URL_2=http://127.0.0.1:8080/
-GLOBAL_URL_3=http://disney.go.com/toontown/launcher/live/install/LoadMoviePC.html
-BUTTON_2=http://127.0.0.1:8080/
-BUTTON_3=http://127.0.0.1:8080/
-BUTTON_4=http://127.0.0.1:8080/
-BUTTON_5=http://127.0.0.1:8080/
-BUTTON_7=http://127.0.0.1:8080/
-BUTTON_8=http://127.0.0.1:8080/
-WEB_PAGE_LOGIN_RPC={LOGIN_API_URL}
-PATCHER_VERSION_STRING_SERVER=V1.0.1.47
-'''
 
 # BUTTON_2: TOP TOONS
 # BUTTON_3: PLAYER'S GUIDE
@@ -125,11 +79,6 @@ PATCHER_VERSION_STRING_SERVER=V1.0.1.47
 # BUTTON_8: NEW ACCOUNT
 #
 
-
-async def handle_start_show(request):
-    print(request.method, request.path, request.query_string)
-
-    return web.Response(text=PATCHER_STARTSHOW)
 
 
 import re
@@ -199,12 +148,12 @@ async def handle_login(request):
     token = f'LOGIN_TOKEN={token.hex()}'
     username = f'GAME_USERNAME={username}'
     disl_id = f'GAME_DISL_ID={info["disl_id"]}'
-    download_url = 'PANDA_DOWNLOAD_URL=http://127.0.0.1:8080/'
-    account_url = 'ACCOUNT_SERVER=http://127.0.0.1/'
+    download_url = f'PANDA_DOWNLOAD_URL=http://{HOST}:{PORT}/'
+    account_url = f'ACCOUNT_SERVER=http://{HOST}/'
     is_test_svr = 'IS_TEST_SERVER=0'
-    game_url = 'GAME_SERVER=127.0.0.1'
+    game_url = f'GAME_SERVER={config["ClientAgent.HOST"]}'
     acc_params = f'webAccountParams=&chatEligible=1&secretsNeedsParentPassword=0'
-    whitelist_url = 'GAME_WHITELIST_URL=http://127.0.0.1:8080/'
+    whitelist_url = f'GAME_WHITELIST_URL=http://{HOST}:{PORT}'
 
     response ='\n'.join((action, token, username, disl_id, download_url, account_url, game_url,
                                         acc_params, is_test_svr, whitelist_url))
@@ -257,7 +206,7 @@ async def init_app():
     app.router.add_get('/launcher/current/patcher.startshow', handle_start_show)
 
     app.router.add_get('/login', handle_login)
-    app.router.add_static('/', path='web/content/', name='releaseNotes.html')
+    app.router.add_static('/', path=config['WebServer.CONTENT_DIR'], name='releaseNotes.html')
     pool = await aiomysql.create_pool(host='127.0.0.1', port=3306, user='toontown', password='7i8k!aQ6PFj1', db='web', maxsize=5)
 
     async with await pool.acquire() as conn:
@@ -280,7 +229,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     app = loop.run_until_complete(init_app())
     print('running app..')
-    web.run_app(app, host='127.0.0.1', port=8080)
+    web.run_app(app, host=HOST, port=PORT)
     app['pool'].terminate()
     print('lll')
 
