@@ -1,8 +1,23 @@
 from asyncio import Queue
 from dc.util import Datagram
+import logging
 
 
 class Service:
+    def __init__(self):
+        self.log = logging.getLogger(self.__class__.__name__)
+        self.log.setLevel(logging.DEBUG)
+        fh = logging.FileHandler('logs/' + self.__class__.__name__ + '.log')
+        fh.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('(%(name)s::%(funcName)s): %(message)s')
+        fh.setFormatter(formatter)
+        ch.setFormatter(formatter)
+        # add the handlers to the logger
+        self.log.addHandler(fh)
+        self.log.addHandler(ch)
+
     async def run(self):
         raise NotImplementedError
 
@@ -29,7 +44,7 @@ class UpstreamServer:
         if self.downstream_protocol is None:
             raise Exception('PROTOCOL NOT DEFINED!')
 
-        print(f'Service {self.__class__.__name__} listening on {host}:{port}')
+        self.log.debug(f'Listening on {host}:{port}')
 
         self._server = await self.loop.create_server(self.new_client, host, port, ssl=self.SERVER_SSL_CONTEXT,
                                                      start_serving=False)

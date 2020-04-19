@@ -221,3 +221,7 @@ dkms.conf
 
 # Phase files
 web/content/*.mf
+
+
+logs/*
+!logs/.gitkeep

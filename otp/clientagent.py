@@ -25,6 +25,11 @@ from dataclasses import dataclass
 from dataslots import with_slots
 
 
+from otp.messagetypes import *
+
+from Crypto.Cipher import AES
+
+
 @with_slots
 @dataclass
 class PotentialAvatar:
@@ -41,13 +46,6 @@ class ClientState(IntEnum):
     NEW = 0
     ANONYMOUS = 1
     AUTHENTICATED = 2
-
-
-#class WishNameResult(IntEnum):
-#    FAILURE = 0
-#    PENDING_APPROVAL = 1
-#    APPROVED = 2
-#    REJECTED = 3
 
 
 class ClientDisconnect(IntEnum):
@@ -73,12 +71,7 @@ class Interest:
         self.done = False
 
 
-from otp.messagetypes import *
-
 OTP_DO_ID_TOONTOWN = 4618
-
-from dataclasses import dataclass
-from dataslots import with_slots
 
 
 @with_slots
@@ -101,8 +94,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.state = ClientState.NEW
         self.channel = service.new_channel_id()
         self.subscribe_channel(self.channel)
-        print('new client', self.channel)
-
         self.alloc_channel = self.channel
 
         self.session_objects = set()
@@ -117,14 +108,30 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.current_context = None
 
+        self.pending_set_av = None
+
+    def disconnect(self, booted_index, booted_text):
+        for task in self.tasks:
+            task.cancel()
+        del self.tasks[:]
+        resp = Datagram()
+        resp.add_uint16(CLIENT_GO_GET_LOST)
+        resp.add_uint16(booted_index)
+        resp.add_string16(booted_text.encode('utf-8'))
+        self.transport.write(resp.get_length().to_bytes(2, byteorder='little'))
+        self.transport.write(resp.get_message().tobytes())
+        self.transport.close()
+
     def connection_lost(self, exc):
         ToontownProtocol.connection_lost(self, exc)
 
-        dg = Datagram()
-        dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_DELETE_RAM)
-        dg.add_uint32(self.pending_set_av)
-        self.service.send_datagram(dg)
+        if self.pending_set_av:
+            dg = Datagram()
+            dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_DELETE_RAM)
+            dg.add_uint32(self.pending_set_av)
+            self.service.send_datagram(dg)
 
+        self.service.remove_participant(self)
         print('lost connection to client!', exc)
 
     def data_received(self, data: bytes):
@@ -242,7 +249,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             return
 
         print('SET AVATAR %s' % av_id)
-
 
         self.pending_set_av = av_id
 
@@ -441,17 +447,17 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         hash_val = dgi.get_uint32()
         want_magic_words = dgi.get_string16()
 
-        print(f'play_token:{play_token}, server_version:{server_version}, hash_val:{hash_val}, want_magic_words:{want_magic_words}')
+        self.service.log.debug(f'play_token:{play_token}, server_version:{server_version}, hash_val:{hash_val}, want_magic_words:{want_magic_words}')
 
-        from Crypto.Cipher import AES
+        try:
+            play_token = bytes.fromhex(play_token)
+            nonce, tag, play_token = play_token[:16], play_token[16:32], play_token[32:]
+            cipher = AES.new(CLIENTAGENT_SECRET, AES.MODE_EAX, nonce)
+            data = cipher.decrypt_and_verify(play_token, tag)
+        except ValueError as e:
+            self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
+            return
 
-        play_token = bytes.fromhex(play_token)
-        nonce, tag, play_token = play_token[:16], play_token[16:32], play_token[32:]
-
-        print(nonce, tag, play_token)
-
-        cipher = AES.new(CLIENTAGENT_SECRET, AES.MODE_EAX, nonce)
-        data = cipher.decrypt_and_verify(play_token, tag)
 
         print('loading json....')
 
@@ -777,6 +783,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
     def send_go_get_lost(self, booted_index, booted_text):
         resp = Datagram()
+        resp.add_uint16(CLIENT_GO_GET_LOST)
         resp.add_uint16(booted_index)
         resp.add_string16(booted_text.encode('utf-8'))
         self.send_datagram(resp)
