@@ -2,7 +2,7 @@ aiohttp==3.6.2
 aiomysql==0.0.20
 Cython==0.29.16
 dataslots==1.0.1
-panda3d==1.10.6.post2
+panda3d>=1.10
 pycryptodome==3.9.7
 PyMySQL==0.9.2
 pyOpenSSL==17.5.0
