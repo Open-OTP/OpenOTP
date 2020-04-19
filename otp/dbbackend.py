@@ -38,20 +38,18 @@ class SQLBackend(DatabaseBackend):
 
     async def setup(self):
         self.pool = await aiomysql.create_pool(host='127.0.0.1', port=3306, user='toontown', password='7i8k!aQ6PFj1',
-                                               loop=self.service.loop, db='otp', maxsize=5)
+                                               loop=self.service.loop, maxsize=5)
         conn = await self.pool.acquire()
         cursor = await conn.cursor()
+        await cursor.execute('CREATE DATABASE IF NOT EXISTS otp;')
+        await cursor.execute('USE otp;')
 
         warnings.filterwarnings('ignore', 'Table \'[A-Za-z]+\' already exists')
 
-        await cursor.execute('CREATE TABLE IF NOT EXISTS objects (do_id INT NOT NULL AUTO_INCREMENT, class_name VARCHAR(255), PRIMARY KEY (do_id));')
-
-        await cursor.execute("SELECT `AUTO_INCREMENT` FROM  INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'otp' AND   TABLE_NAME   = 'objects';")
-        self.next_id = (await cursor.fetchone())[0]
-
-        if self.next_id < self.service.min_channel:
+        await cursor.execute('SHOW TABLES LIKE \'objects\';')
+        if await cursor.fetchone() is None:
+            await cursor.execute('CREATE TABLE objects (do_id INT NOT NULL AUTO_INCREMENT, class_name VARCHAR(255), PRIMARY KEY (do_id));')
             await cursor.execute("ALTER TABLE objects AUTO_INCREMENT = %d;" % self.service.min_channel)
-            self.next_id = self.service.min_channel
 
         for dclass in self.dc.classes:
             if 'DcObjectType' not in dclass.fields_by_name:
