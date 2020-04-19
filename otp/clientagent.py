@@ -29,7 +29,6 @@ from otp.messagetypes import *
 
 from Crypto.Cipher import AES
 
-
 @with_slots
 @dataclass
 class PotentialAvatar:
@@ -458,16 +457,13 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
             return
 
-
-        print('loading json....')
-
         data = json.loads(data)
 
         for key in list(data.keys()):
             if type(data[key]) == str:
                 data[key] = data[key].encode('utf-8')
 
-        print('data:', data)
+        self.service.log.debug(f'Login token data:{data}')
 
         resp = Datagram()
         resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
@@ -486,15 +482,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_string16(data['create_friends_with_chat'])
         resp.add_string16(data['chat_code_creation_rule'])
 
-        print('added strings')
-
-        now = round(time.time(), 6)
-        seconds = int(now)
-        useconds = 0 #int(str(now).split('.')[1])
-        print(seconds, useconds)
-
-        resp.add_uint32(seconds)
-        resp.add_uint32(useconds)
+        t = time.time() * 10e6
+        usecs = int(t % 10e6)
+        secs = int(t * 10e6)
+        resp.add_uint32(secs)
+        resp.add_uint32(usecs)
 
         resp.add_string16(data['access'])
         resp.add_string16(data['whitelist_chat_enabled'])
