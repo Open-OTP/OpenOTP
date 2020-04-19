@@ -34,6 +34,15 @@ class ParTransformer(Transformer):
 
         if len(args):
             value = args.pop(0).value
+
+            try:
+                value = int(value, 0)
+            except ValueError:
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+
         else:
             value = None
 
@@ -46,10 +55,18 @@ from lark import Lark
 def parse_par_file(fp, debug=False):
     with open('par/par.lark', 'r') as lark_f:
         transformer = ParTransformer(fp)
-        dc_parser = Lark(lark_f, start='par', debug=debug, parser='lalr', lexer='contextual', transformer=transformer)
+        par_parser = Lark(lark_f, start='par', debug=debug, parser='lalr', lexer='contextual', transformer=transformer)
         with open(fp, 'r') as f2:
-            tree = dc_parser.parse(f2.read(),)
+            tree = par_parser.parse(f2.read(),)
             return tree.children[0]
+
+
+def parse_par(s, debug=False):
+    with open('par/par.lark', 'r') as lark_f:
+        transformer = ParTransformer('<stream>')
+        par_parser = Lark(lark_f, start='par', debug=debug, parser='lalr', lexer='contextual', transformer=transformer)
+        tree = par_parser.parse(s,)
+        return tree.children[0]
 
 
 class ParFile:
