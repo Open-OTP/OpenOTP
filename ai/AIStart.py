@@ -141,6 +141,9 @@ class AIBase:
         self.start_read_poll_task()
         self.taskMgr.run()
 
+    def stop(self):
+        self.taskMgr.stop()
+
     def start_read_poll_task(self):
         self.taskMgr.add(self.air.read_until_empty, 'readPoll', priority=-30)
 
@@ -213,7 +216,9 @@ class AIRepository:
         self.net_thread.start()
 
     def _on_net_except(self, loop, context):
-        print('err', context)
+        print('Error on networking thread: %s' % context['message'])
+        self.loop.stop()
+        simbase.stop()
 
     def __event_loop(self):
         self.loop = asyncio.new_event_loop()
@@ -383,7 +388,8 @@ class AIRepository:
 
 def main():
     print('running main')
-    simbase = AIBase()
+    import builtins
+    builtins.simbase = AIBase()
     simbase.run()
 
 
