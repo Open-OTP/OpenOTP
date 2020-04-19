@@ -38,11 +38,9 @@ class SQLBackend(DatabaseBackend):
 
     async def setup(self):
         self.pool = await aiomysql.create_pool(host='127.0.0.1', port=3306, user='toontown', password='7i8k!aQ6PFj1',
-                                               loop=self.service.loop, maxsize=5)
+                                               loop=self.service.loop, db='otp', maxsize=5)
         conn = await self.pool.acquire()
         cursor = await conn.cursor()
-        await cursor.execute('CREATE DATABASE IF NOT EXISTS otp;')
-        await cursor.execute('USE otp;')
 
         warnings.filterwarnings('ignore', 'Table \'[A-Za-z]+\' already exists')
 
