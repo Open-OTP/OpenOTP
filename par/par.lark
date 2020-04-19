@@ -1,0 +1,13 @@
+par: (section | entry | _NEWLINE)*
+
+section: SECTION_DEF _NEWLINE (entry | _NEWLINE)*
+SECTION_DEF: "[" KEY "]"
+entry: KEY "=" [ VALUE ] _NEWLINE?
+VALUE: SECTION_DEF | /[^\x00-\x1F]+/
+
+KEY: /[a-zA-Z_][a-zA-Z_0-9]*/
+
+_NEWLINE: "\r\n" | "\n"
+
+%ignore COMMENT
+COMMENT: /#[^\n]*/

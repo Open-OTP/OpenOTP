@@ -1,0 +1,158 @@
+dna: (store_font | store_texture | model | group | store_suit_point)+
+
+group: KW_GROUP STRING_LITERAL "[" (group | visgroup | prop | street | flatbuilding | landmark | anim_building | interactive_prop | node)* "]"
+visgroup: KW_VISGROUP STRING_LITERAL "[" vis (group | visgroup | prop | node | landmark | flatbuilding | suit_edge | battle_cell | interactive_prop | street | anim_prop)* "]"
+node: KW_NODE STRING_LITERAL "[" (prop | landmark | street | flatbuilding)* "]"
+street: KW_STREET STRING_LITERAL "[" (node_properties | code | texture)+ "]"
+vis: KW_VIS "[" STRING_LITERAL+ "]"
+
+
+landmark: KW_LANDMARK STRING_LITERAL "[" (code | node_properties | title | door | sign | buildingtype | prop)* "]"
+anim_building: KW_ANIM_BUILDING STRING_LITERAL "[" (code | node_properties | title | door | sign | buildingtype | prop | anim)* "]"
+title: KW_TITLE "[" STRING_LITERAL "]"
+buildingtype: KW_BUILDINGTYPE "[" STRING_LITERAL "]"
+door: KW_DOOR "[" (code | node_properties)+ "]"
+sign: KW_SIGN "[" (code | node_properties | baseline)* "]"
+baseline: KW_BASELINE "[" (code | node_properties | width | height | text | graphic | flags | wiggle | stumble | kern | stomp)* "]"
+graphic: KW_GRAPHIC "[" code "]"
+flags: KW_FLAGS "[" STRING_LITERAL "]"
+text: KW_TEXT "[" letters "]"
+letters: KW_LETTERS char
+
+flatbuilding: KW_FLATBUILDING STRING_LITERAL "[" (node_properties | width | height | wall | prop)* "]"
+wall: KW_WALL "[" (code | height | color | windows | cornice | flat_door)* "]"
+cornice: KW_CORNICE "[" (code | color)+ "]"
+windows: KW_WINDOWS "[" (code | color | count)*"]"
+flat_door: KW_FLATDOOR "[" code color? "]"
+
+
+anim_prop: KW_ANIM_PROP STRING_LITERAL "[" (code | node_properties | anim)* "]"
+interactive_prop: KW_INTERACTIVE_PROP STRING_LITERAL "[" (node_properties | code | anim | cell_id)* "]"
+cell_id: KW_CELL_ID "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "]"
+prop: KW_PROP STRING_LITERAL "[" (code | node_properties | sign)+ "]"
+
+
+battle_cell: KW_BATTLE_CELL "[" UNSIGNED_INT_LITERAL UNSIGNED_INT_LITERAL (FLOAT_LITERAL | INT_LITERAL)~3 "]"
+suit_edge: KW_SUIT_EDGE "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "]"
+store_suit_point: KW_STORESUITPOINT "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "," (KW_STREET_POINT | KW_FRONT_DOOR_POINT | KW_SIDE_DOOR_POINT | KW_COGHQ_IN_POINT | KW_COGHQ_OUT_POINT) "," (FLOAT_LITERAL | INT_LITERAL)~3  ("," (UNSIGNED_INT_LITERAL | ZERO_LITERAL))?"]"
+
+anim: KW_ANIM "[" STRING_LITERAL "]"
+code: KW_CODE "[" STRING_LITERAL "]"
+node_properties: pos | nhpr | hpr | scale | color
+
+hpr: KW_HPR vec3
+pos: KW_POS vec3
+nhpr: KW_NHPR vec3
+scale: KW_SCALE vec3
+color: KW_COLOR vec4
+kern: KW_KERN vec1
+stomp: KW_STOMP vec1
+stumble: KW_STUMBLE vec1
+wiggle: KW_WIGGLE vec1
+width: KW_WIDTH vec1
+height: KW_HEIGHT vec1
+
+
+texture: KW_TEXTURE "[" STRING_LITERAL "]"
+count: KW_COUNT "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "]"
+
+char: "[" "\"" STRING_CHARACTER "\"" "]"
+vec1: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) "]"
+vec3: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) ~ 3 "]"
+vec4: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) ~ 4 "]"
+
+model: KW_MODEL STRING_LITERAL "[" store_node* "]"
+store_font: KW_STOREFONT "[" STRING_LITERAL STRING_LITERAL STRING_LITERAL "]"
+store_node: KW_STORENODE "[" STRING_LITERAL STRING_LITERAL [ STRING_LITERAL ] "]"
+store_texture: KW_STORETEXTURE "[" STRING_LITERAL STRING_LITERAL STRING_LITERAL "]"
+
+KW_ANIM_PROP: "anim_prop"
+KW_ANIM_BUILDING: "anim_building"
+KW_CELL_ID: "cell_id"
+KW_ANIM: "anim"
+KW_INTERACTIVE_PROP: "interactive_prop"
+KW_FLATDOOR: "flat_door"
+KW_TEXTURE: "texture"
+KW_STREET: "street"
+KW_BATTLE_CELL: "battle_cell"
+KW_SUIT_EDGE: "suit_edge"
+KW_COGHQ_OUT_POINT: "COGHQ_OUT_POINT"
+KW_COGHQ_IN_POINT: "COGHQ_IN_POINT"
+KW_SIDE_DOOR_POINT: "SIDE_DOOR_POINT"
+KW_FRONT_DOOR_POINT: "FRONT_DOOR_POINT"
+KW_STREET_POINT: "STREET_POINT"
+KW_STORESUITPOINT: "store_suit_point"
+KW_CORNICE: "cornice"
+KW_COUNT: "count"
+KW_WINDOWS: "windows"
+KW_WALL: "wall"
+KW_FLATBUILDING: "flat_building"
+KW_BUILDINGTYPE: "building_type"
+KW_TITLE: "title"
+KW_DOOR: "door"
+KW_LANDMARK: "landmark_building"
+KW_KERN: "kern"
+KW_NODE: "node"
+KW_STOMP : "stomp"
+KW_STUMBLE: "stumble"
+KW_WIGGLE: "wiggle"
+KW_FLAGS: "flags"
+KW_GRAPHIC: "graphic"
+KW_LETTERS: "letters"
+KW_TEXT: "text"
+KW_BASELINE: "baseline"
+KW_WIDTH: "width"
+KW_HEIGHT: "height"
+KW_COLOR: "color"
+KW_SIGN: "sign"
+KW_NHPR: "nhpr"
+KW_HPR: "hpr"
+KW_SCALE: "scale"
+KW_POS: "pos"
+KW_CODE: "code"
+KW_PROP: "prop"
+KW_VIS: "vis"
+KW_VISGROUP: "visgroup"
+KW_GROUP: "group"
+
+// storage keywords
+KW_STORETEXTURE: "store_texture"
+KW_STOREFONT: "store_font"
+KW_STORENODE: "store_node"
+KW_MODEL: "model"
+
+
+
+STRING_LITERAL  : "\"" STRING_CHARACTER* "\""
+STRING_CHARACTER: NON_DOUBLE_QUOTE | ESCAPE_SEQUENCE
+ESCAPE_SEQUENCE : "\\" ( /[^\x03-\x1F]/  | ("x" HEX_DIGIT HEX_DIGIT* ))
+NON_SINGLE_QUOTE: /[^\x03-\x1F']/
+NON_DOUBLE_QUOTE: /[^\x03-\x1F"]/
+
+FLOAT_LITERAL: NEG_SIGN? ((DECIMALS DECIMAL_POINT DECIMALS) | (DECIMAL_POINT DECIMALS)) SCIENTIFIC_NOTATION?
+SCIENTIFIC_NOTATION: ("E" | "e") (POS_SIGN | NEG_SIGN)? DEC_DIGIT+
+
+DECIMALS: DEC_DIGIT DEC_DIGIT*
+DECIMAL_POINT: "."
+
+INT_LITERAL: SIGNED_INT_LITERAL | UNSIGNED_INT_LITERAL | ZERO_LITERAL
+HEX_LITERAL: "0" ( "x" | "X" ) HEX_DIGIT HEX_DIGIT*
+SIGNED_INT_LITERAL: (NEG_SIGN | POS_SIGN) (UNSIGNED_INT_LITERAL | ZERO_LITERAL)
+UNSIGNED_INT_LITERAL: ( "1" .. "9" ) DEC_DIGIT*
+
+ZERO_LITERAL: "0"
+NEG_SIGN: "-"
+POS_SIGN: "+"
+
+DEC_DIGIT: "0" .. "9"
+HEX_DIGIT: "0" .. "9" | "A" .. "F" | "a" .. "f"
+
+%ignore MULTI_LINE_COMMENT
+MULTI_LINE_COMMENT: /(?s)\/\*.*?\*\//
+
+%ignore COMMENT
+COMMENT: /\/\/[^\n]*/
+
+%ignore WHITESPACE
+WHITESPACE: WHITESPACE_INLINE | /[\r\n]/+
+WHITESPACE_INLINE: /[ \t]/+

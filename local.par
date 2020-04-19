@@ -1,0 +1,13 @@
+
+
+[MessageDirector]
+PORT=46668
+
+[ClientAgent]
+PORT=46667
+
+[StateServer]
+PORT=46669
+
+[DatabaseServer]
+PORT=46670
