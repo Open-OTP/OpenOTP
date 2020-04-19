@@ -213,6 +213,11 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-
-# Pycharm
+# JetBrains IDE
 .idea
+
+# macOS
+*.DS_Store
+
+# Phase files
+web/content/*.mf
