@@ -40,12 +40,16 @@ class ToontownDistrictAI(DistributedObjectAI):
         DistributedObjectAI.__init__(self, air)
         self.name = 'Coontown'
         self.available = True
+        self.ahnnLog = False
 
     def getName(self):
         return self.name
 
     def getAvailable(self):
         return self.available
+
+    def allowAHNNLog(self):
+        return self.ahnnLog
 
 
 class ToontownDistrictStatsAI(DistributedObjectAI):

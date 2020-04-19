@@ -919,6 +919,7 @@ struct datetime {
 
 dclass ToontownDistrict : DistributedDistrict {
   setParentingRules(string, string) broadcast ram;
+  allowAHNNLog(bool) broadcast required ram;
 };
 
 dclass ToontownDistrictStats : DistributedObject {
