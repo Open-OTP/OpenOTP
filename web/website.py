@@ -16,7 +16,7 @@ import json
 import os
 
 
-SECRET = b'N)\x8fgj\x1a~\\\x1f\x1e\xa54\xc9\xd9\xf5\x83'
+SECRET = bytes.fromhex(config['General.LOGIN_SECRET'])
 
 logging.basicConfig(level=logging.DEBUG)
 

@@ -1,5 +1,6 @@
 [General]
 UVLOOP=1
+LOGIN_SECRET=4e298f676a1a7e5c1f1ea534c9d9f583
 
 [MessageDirector]
 HOST=127.0.0.1
