@@ -484,7 +484,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         t = time.time() * 10e6
         usecs = int(t % 10e6)
-        secs = int(t * 10e6)
+        secs = int(t / 10e6)
         resp.add_uint32(secs)
         resp.add_uint32(usecs)
 
