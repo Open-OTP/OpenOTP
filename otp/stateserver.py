@@ -285,7 +285,6 @@ class DistributedObject(MDParticipant):
             new_zone = dgi.get_uint32()
             old_parent = dgi.get_uint32()
             old_zone = dgi.get_uint32()
-            print(f'Received changing location from {child_id} for {new_parent} {new_zone} ,my id is {self.do_id}')
 
             if new_parent == self.do_id:
                 if old_parent == self.do_id:
@@ -309,7 +308,7 @@ class DistributedObject(MDParticipant):
                 if not len(children):
                     del self.zone_objects[old_zone]
             else:
-                print(f'Received changing location from {child_id} for {old_parent} but my id is {self.do_id}')
+                self.service.log.debug(f'Received changing location from {child_id} for {old_parent} but my id is {self.do_id}')
         elif msgtype == STATESERVER_QUERY_ZONE_OBJECT_ALL:
             self.handle_query_zone(dgi, sender)
         elif msgtype == STATESERVER_QUERY_OBJECT_ALL:

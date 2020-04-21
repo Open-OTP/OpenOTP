@@ -19,6 +19,18 @@ from otp.constants import *
 from otp.util import DEFAULT_TOON
 
 
+class NamePart(IntEnum):
+    BOY_TITLE = 0
+    GIRL_TITLE = 1
+    NEUTRAL_TITLE = 2
+    BOY_FIRST = 3
+    GIRL_FIRST = 4
+    NEUTRAL_FIRST = 5
+    CAP_PREFIX = 6
+    LAST_PREFIX = 7
+    LAST_SUFFIX = 8
+
+
 @with_slots
 @dataclass
 class PotentialAvatar:
@@ -169,8 +181,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 self.receive_set_avatar(dgi)
             elif msgtype == CLIENT_SET_WISHNAME:
                 self.receive_set_wishname(dgi)
-            elif msgtype == CLIENT_SET_NAME_PATTERN:
-                self.receive_set_name_pattern(dgi)
             elif msgtype == CLIENT_REMOVE_INTEREST:
                 self.receive_remove_interest(dgi)
             elif msgtype == CLIENT_OBJECT_UPDATE_FIELD:
@@ -186,6 +196,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 self.receive_set_avatar(dgi)
             elif msgtype == CLIENT_SET_WISHNAME:
                 self.receive_set_wishname(dgi)
+            elif msgtype == CLIENT_SET_NAME_PATTERN:
+                self.receive_set_name_pattern(dgi)
             elif msgtype == CLIENT_OBJECT_UPDATE_FIELD:
                 do_id = dgi.get_uint32()
                 if do_id == OTP_DO_ID_CENTRAL_LOGGER:
@@ -358,6 +370,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(av_id)  # av_id
         self.send_datagram(resp)
 
+        self.created_av_id = av_id
+
         self.service.log.debug(f'New avatar {av_id} created for client {self.channel}.')
 
     def receive_set_wishname(self, dgi):
@@ -383,7 +397,62 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.send_datagram(resp)
 
     def receive_set_name_pattern(self, dgi):
-        pass
+        av_id = dgi.get_uint32()
+
+        self.service.log.debug(f'Got name pattern request for av_id {av_id}.')
+
+        title_index, title_flag = dgi.get_int16(), dgi.get_int16()
+        first_index, first_flag = dgi.get_int16(), dgi.get_int16()
+        last_prefix_index, last_prefix_flag = dgi.get_int16(), dgi.get_int16()
+        last_suffix_index, last_suffix_flag = dgi.get_int16(), dgi.get_int16()
+
+        resp = Datagram()
+        resp.add_uint16(CLIENT_SET_NAME_PATTERN_ANSWER)
+        resp.add_uint32(av_id)
+
+        if av_id != self.created_av_id:
+            resp.add_uint8(1)
+            self.send_datagram(resp)
+            return
+
+        if first_index <= 0 and last_prefix_index <= 0 and last_suffix_index <= 0:
+            self.service.log.debug(f'Received request for empty name for {av_id}.')
+            resp.add_uint8(2)
+            self.send_datagram(resp)
+            return
+
+        if (last_prefix_index <= 0 <= last_suffix_index) or (last_suffix_index <= 0 <= last_prefix_index):
+            self.service.log.debug(f'Received request for invalid last name for {av_id}.')
+            resp.add_uint8(3)
+            self.send_datagram(resp)
+            return
+
+        try:
+            title = self.get_name_part(title_index, title_flag, {NamePart.BOY_TITLE, NamePart.GIRL_TITLE, NamePart.NEUTRAL_TITLE})
+            first = self.get_name_part(first_index, first_flag, {NamePart.BOY_FIRST, NamePart.GIRL_FIRST, NamePart.NEUTRAL_FIRST})
+            last_prefix = self.get_name_part(last_prefix_index, last_prefix_flag, {NamePart.CAP_PREFIX, NamePart.LAST_PREFIX})
+            last_suffix = self.get_name_part(last_suffix_index, last_suffix_flag, {NamePart.LAST_SUFFIX})
+        except KeyError as e:
+            resp.add_uint8(4)
+            self.send_datagram(resp)
+            self.service.log.debug(f'Received invalid index for name part. {e.args}')
+            return
+
+        name = f'{title} {first} {last_prefix}{last_suffix}'
+
+        resp.add_uint8(0)
+        self.send_datagram(resp)
+
+    def get_name_part(self, index, flag, categories):
+        if index >= 0:
+            if self.service.name_categories[index] not in categories:
+                self.service.log.debug(f'Received invalid index for pattern name: {index}. Expected categories: {categories}')
+                return
+
+            title = self.service.name_parts[index]
+            return title.capitalize() if flag else title
+        else:
+            return ''
 
     def receive_remove_interest(self, dgi):
         handle = dgi.get_uint16()

@@ -30,6 +30,7 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
         ChannelAllocator.__init__(self)
 
         self.dc_file = parse_dc_file('toon.dc')
+        self.dc_hash = self.dc_file.hash
 
         self.avatars_field = self.dc_file.namespace['Account']['ACCOUNT_AV_SET']
 
@@ -37,7 +38,25 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
 
         self._context = 0
 
-        print(self.dc_file.hash)
+        self.log.debug(f'DC Hash is {self.dc_hash}')
+
+        self.name_parts = {}
+        self.name_categories = {}
+
+        with open('NameMasterEnglish.txt', 'r') as f:
+            for line in f:
+                if line[0] == '#':
+                    continue
+
+                if line.endswith('\r\n'):
+                    line = line[:-2]
+                elif line.endswith('\n'):
+                    line = line[:-1]
+
+                index, category, name = line.split('*')
+                index, category = int(index), int(category)
+                self.name_parts[index] = name
+                self.name_categories[index] = category
 
         self.listen_task = None
 
