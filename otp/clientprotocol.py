@@ -2,6 +2,7 @@ import time
 import json
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import List, Union, Dict
 
 
 from Crypto.Cipher import AES
@@ -15,6 +16,7 @@ from otp.messagetypes import *
 from otp.networking import ToontownProtocol, DatagramFuture
 from otp.zone import *
 from otp.constants import *
+from otp.util import DEFAULT_TOON
 
 
 @with_slots
@@ -77,30 +79,36 @@ class ObjectInfo:
 CLIENTAGENT_SECRET = bytes.fromhex(config['General.LOGIN_SECRET'])
 
 
+@with_slots
+@dataclass
+class DISLAccount:
+    username: bytes
+    disl_id: int
+    access: bytes
+    account_type: bytes
+    create_friends_with_chat: bytes
+    chat_code_creation_rule: bytes
+    whitelist_chat_enabled: bytes
+
+
 class ClientProtocol(ToontownProtocol, MDParticipant):
     def __init__(self, service):
         ToontownProtocol.__init__(self, service)
         MDParticipant.__init__(self, service)
 
-        self.state = ClientState.NEW
-        self.channel = service.new_channel_id()
+        self.state: int = ClientState.NEW
+        self.channel: int = service.new_channel_id()
         self.subscribe_channel(self.channel)
         self.alloc_channel = self.channel
 
-        self.session_objects = set()
+        self.interests: List[Interest] = []
+        self.visible_objects: Dict[int, ObjectInfo] = {}
+        self.pending_objects: Dict[int, ObjectInfo] = {}
+        self.owned_objects: Dict[int, ObjectInfo] = {}
 
-        self.interests = []
-        self.visible_objects = {}
-        self.pending_objects = {}
-        self.owned_objects = {}
-        self.callbacks = {}
-
-        self.account_data = None
-
-        self.current_context = None
-
+        self.account: Union[DISLAccount, None] = None
         self.avatar = None
-        self.potential_avatars = []
+        self.potential_avatars: List[PotentialAvatar] = []
 
     def disconnect(self, booted_index, booted_text):
         for task in self.tasks:
@@ -195,10 +203,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         field = self.service.dc_file.fields[field_number]()
 
         pos = dgi.tell()
-        try:
-            field.unpack_bytes(dgi)
-        except Exception as e:
-            print('couldnt unpack field', e)
+        field.unpack_bytes(dgi)
         dgi.seek(pos)
 
         if do_id in self.owned_objects:
@@ -288,25 +293,26 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         dg.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_CREATE_STORED_OBJECT)
         dg.add_uint32(0)
         dg.add_uint16(dclass.number)
-        dg.add_uint32(self.account_data['disl_id'])
+        dg.add_uint32(self.account.disl_id)
         dg.add_uint8(pos)
         pos = dg.tell()
         dg.add_uint16(0)
 
-        from ai.DistributedToon import DistributedToonAI
-        obj = DistributedToonAI(self.service)
-        obj.getDISLid = lambda self: self.account_data['disl_id']
+        try:
 
-        count = 0
-        for field in dclass.inherited_fields:
-            if field.number == dclass['setDNAString'].number:
-                dg.add_uint16(field.number)
-                dg.add_string16(dna.encode('ascii'))
-                count += 1
-            elif not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
-                dg.add_uint16(field.number)
-                dclass.pack_field(dg, obj, field)
-                count += 1
+            default_toon = dict(DEFAULT_TOON)
+            default_toon['setDNAString'] = (dna,)
+            default_toon['setDISLId'] = (self.account.disl_id,)
+
+            count = 0
+            for field in dclass.inherited_fields:
+                if not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
+                    dg.add_uint16(field.number)
+                    field.pack_value(dg, default_toon[field.name])
+                    count += 1
+        except Exception as e:
+            print(e, e.__class__, e.args)
+            return
 
         dg.seek(pos)
         dg.add_uint16(count)
@@ -407,7 +413,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         query = Datagram()
         query.add_server_header([DBSERVERS_CHANNEL, ], self.channel, DBSERVER_ACCOUNT_QUERY)
 
-        disl_id = self.account_data['disl_id']
+        disl_id = self.account.disl_id
         query.add_uint32(disl_id)
         field_number = self.service.avatars_field.number
         query.add_uint16(field_number)
@@ -450,24 +456,24 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         hash_val = dgi.get_uint32()
         want_magic_words = dgi.get_string16()
 
-        self.service.log.debug(f'play_token:{play_token}, server_version:{server_version}, hash_val:{hash_val}, want_magic_words:{want_magic_words}')
+        self.service.log.debug(f'play_token:{play_token}, server_version:{server_version}, hash_val:{hash_val}, '
+                               f'want_magic_words:{want_magic_words}')
 
         try:
             play_token = bytes.fromhex(play_token)
             nonce, tag, play_token = play_token[:16], play_token[16:32], play_token[32:]
             cipher = AES.new(CLIENTAGENT_SECRET, AES.MODE_EAX, nonce)
             data = cipher.decrypt_and_verify(play_token, tag)
+            self.service.log.debug(f'Login token data:{data}')
+            data = json.loads(data)
+            for key in list(data.keys()):
+                value = data[key]
+                if type(value) == str:
+                    data[key] = value.encode('utf-8')
+            self.account = DISLAccount(**data)
         except ValueError as e:
             self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
             return
-
-        data = json.loads(data)
-
-        for key in list(data.keys()):
-            if type(data[key]) == str:
-                data[key] = data[key].encode('utf-8')
-
-        self.service.log.debug(f'Login token data:{data}')
 
         resp = Datagram()
         resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
@@ -478,13 +484,13 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         error_string = b'' # 'Bad DC Version Compare'
         resp.add_string16(error_string)
 
-        resp.add_uint32(data['disl_id'])
-        resp.add_string16(data['username'])
+        resp.add_uint32(self.account.disl_id)
+        resp.add_string16(self.account.username)
         account_name_approved = True
         resp.add_uint8(account_name_approved)
-        resp.add_string16(data['whitelist_chat_enabled'])
-        resp.add_string16(data['create_friends_with_chat'])
-        resp.add_string16(data['chat_code_creation_rule'])
+        resp.add_string16(self.account.whitelist_chat_enabled)
+        resp.add_string16(self.account.create_friends_with_chat)
+        resp.add_string16(self.account.chat_code_creation_rule)
 
         t = time.time() * 10e6
         usecs = int(t % 10e6)
@@ -492,19 +498,18 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(secs)
         resp.add_uint32(usecs)
 
-        resp.add_string16(data['access'])
-        resp.add_string16(data['whitelist_chat_enabled'])
+        resp.add_string16(self.account.access)
+        resp.add_string16(self.account.whitelist_chat_enabled)
 
         last_logged_in = time.strftime('%c')  # time.strftime('%c')
         resp.add_string16(last_logged_in.encode('utf-8'))
 
         account_days = 0
         resp.add_int32(account_days)
-        resp.add_string16(data['account_type'])
-        resp.add_string16(data['username'])
+        resp.add_string16(self.account.account_type)
+        resp.add_string16(self.account.username)
 
         self.send_datagram(resp)
-        self.account_data = data
 
     def receive_add_interest(self, dgi):
         handle = dgi.get_uint16()
@@ -605,7 +610,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         fields[battle_id.number] = b'\x00\x00\x00\x00'
         fields[as_gm_field.number] = b'\x01'
 
-        account_id = self.account_data['disl_id']
+        account_id = self.account.disl_id
         sender_channel = account_id << 32 | self.avatar_id
         self.channel = sender_channel
         self.subscribe_channel(self.channel)
@@ -783,7 +788,3 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
     def annihilate(self):
         self.service.upstream.unsubscribe_all(self)
-
-        for object in self.session_objects:
-            #delete
-            pass
