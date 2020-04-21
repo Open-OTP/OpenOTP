@@ -11,7 +11,7 @@ class Service:
         fh.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('(%(name)s::%(funcName)s): %(message)s')
+        formatter = logging.Formatter('(%(name)s::%(asctime)s): %(message)s')
         fh.setFormatter(formatter)
         ch.setFormatter(formatter)
         # add the handlers to the logger
