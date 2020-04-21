@@ -225,3 +225,6 @@ web/content/*.mf
 
 logs/*
 !logs/.gitkeep
+tests/_trial_temp
+
+.vs
