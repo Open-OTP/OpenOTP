@@ -16,7 +16,7 @@ from otp.zone import *
 
 
 class DistributedObject(MDParticipant):
-    def __init__(self, state_server, sender, do_id, parent_id, zone_id, dclass, required, ram, owner_channel=None):
+    def __init__(self, state_server, sender, do_id, parent_id, zone_id, dclass, required, ram, owner_channel=None, db=False):
         MDParticipant.__init__(self, state_server)
         self.sender = sender
         self.do_id = do_id
@@ -25,6 +25,7 @@ class DistributedObject(MDParticipant):
         self.dclass = dclass
         self.required = required
         self.ram = ram
+        self.db = db
 
         self.ai_channel = None
         self.owner_channel = owner_channel
@@ -57,6 +58,7 @@ class DistributedObject(MDParticipant):
                 continue
 
             if not client_only or field.is_broadcast or 'clrecv' in field.keywords or (also_owner and field.is_ownrecv):
+                self.service.log.debug(f'Packing field {field.name} for {self.do_id}')
                 dg.add_bytes(self.required[field.name])
 
     def append_other_data(self, dg, client_only, also_owner):
@@ -72,10 +74,11 @@ class DistributedObject(MDParticipant):
                     count += 1
 
             dg.add_uint16(count)
-            dg.add_bytes(fields_dg.get_message().tobytes())
+            if count:
+                dg.add_bytes(fields_dg.get_message().tobytes())
 
         else:
-            dg.add_uint16(len(self.ram.keys()))
+            dg.add_uint16(len(self.ram))
             for field_name, raw_data in self.ram.items():
                 field = self.dclass.fields_by_name[field_name]
                 dg.add_uint16(field.number)
@@ -106,7 +109,7 @@ class DistributedObject(MDParticipant):
     def send_owner_entry(self, location):
         dg = Datagram()
         dg.add_server_header([location], self.do_id, STATESERVER_OBJECT_ENTER_OWNER_RECV)
-        self.append_required_data(dg, True, True)
+        self.append_required_data(dg, False, True)
 
         if self.ram:
             self.append_other_data(dg, True, True)
@@ -207,6 +210,9 @@ class DistributedObject(MDParticipant):
 
         self.service.remove_participant(self)
 
+        if self.db:
+            self.service.database_objects.remove(self.do_id)
+
         self.service.log.debug(f'Object {self.do_id} has been deleted.')
 
     def delete_children(self, sender):
@@ -240,6 +246,15 @@ class DistributedObject(MDParticipant):
             self.required[field.name] = data
         else:
             self.ram[field.name] = data
+
+        if self.db and 'db' in field.keywords:
+            dg = Datagram()
+            dg.add_server_header([DBSERVERS_CHANNEL], self.do_id, DBSERVER_SET_STORED_VALUES)
+            dg.add_uint32(self.do_id)
+            dg.add_uint16(1)
+            dg.add_uint16(field.number)
+            dg.add_bytes(data)
+            self.service.send_datagram(dg)
 
     def handle_one_get(self, dg, field_id, subfield=False):
         field = self.dclass.dcfile().fields[field_id]()
@@ -387,15 +402,99 @@ class StateServerProtocol(MDUpstreamProtocol):
             self.handle_add_ai(dgi, sender)
         elif msgtype == STATESERVER_OBJECT_SET_OWNER_RECV:
             self.handle_set_owner(dgi, sender)
+        elif msgtype == DBSERVER_GET_STORED_VALUES_RESP:
+            self.activate_callback(dgi)
 
     def handle_db_generate(self, dgi, sender, other=False):
+        do_id = dgi.get_uint32()
+
+        if do_id in self.service.queries or do_id in self.service.database_objects:
+            self.service.log.debug(f'Got duplicate activate request for object {do_id} from {sender}')
+            return
+
         parent_id = dgi.get_uint32()
         zone_id = dgi.get_uint32()
         owner_channel = dgi.get_channel()
         number = dgi.get_uint16()
-        context_id = dgi.get_uint32()
+
+        other_data = []
 
         state_server = self.service
+
+        if other:
+            field_count = dgi.get_uint16()
+
+            for i in range(field_count):
+                field_number = dgi.get_uint16()
+                field = state_server.dc_file.fields[field_number]()
+                data = field.unpack_bytes(dgi)
+                other_data.append((field_number, data))
+
+        dclass = state_server.dc_file.classes[number]
+
+        query = Datagram()
+        query.add_server_header([DBSERVERS_CHANNEL], STATESERVERS_CHANNEL, DBSERVER_GET_STORED_VALUES)
+        query.add_uint32(1)
+        query.add_uint32(do_id)
+
+        pos = query.tell()
+        query.add_uint16(0)
+        count = 0
+        for field in dclass:
+            if not isinstance(field, MolecularField) and 'db' in field.keywords:
+                if field.name == 'DcObjectType':
+                    continue
+                query.add_uint16(field.number)
+                count += 1
+        query.seek(pos)
+        query.add_uint16(count)
+
+        self.service.log.debug(f'Querying {count} fields for {dclass.name} {do_id}. Other data: {other_data}')
+
+        self.service.queries[do_id] = (parent_id, zone_id, owner_channel, number, other_data)
+        self.service.send_datagram(query)
+
+    def activate_callback(self, dgi):
+        context = dgi.get_uint32()
+        do_id = dgi.get_uint32()
+
+        state_server = self.service
+
+        parent_id, zone_id, owner_channel, number, other_data = state_server.queries[do_id]
+        dclass = state_server.dc_file.classes[number]
+
+        del state_server.queries[do_id]
+
+        required = {}
+        ram = {}
+
+        count = dgi.get_uint16()
+        self.service.log.debug(f'Unpacking {count} fields for activate. do_id: {do_id}')
+
+        for i in range(count):
+            field_number = dgi.get_uint16()
+            field = state_server.dc_file.fields[field_number]()
+            self.service.log.debug(f'Unpacking {field.name}...')
+
+            if field.is_required:
+                required[field.name] = field.unpack_bytes(dgi)
+            else:
+                ram[field.name] = field.unpack_bytes(dgi)
+
+        for field_number, data in other_data:
+            field = state_server.dc_file.fields[field_number]()
+            if field.is_required:
+                required[field.name] = data
+            else:
+                ram[field.name] = data
+
+        self.service.log.debug(f'Activating {do_id} with required:{required}\nram:{ram}\n')
+
+        obj = DistributedObject(state_server, STATESERVERS_CHANNEL, do_id, parent_id, zone_id, dclass, required, ram,
+                                owner_channel=owner_channel, db=True)
+        state_server.database_objects.add(do_id)
+        state_server.objects[do_id] = obj
+        obj.send_owner_entry(owner_channel)
 
     def handle_add_ai(self, dgi, sender):
         object_id = dgi.get_uint32()
@@ -456,7 +555,6 @@ class StateServerProtocol(MDUpstreamProtocol):
                     ram[field.name] = field.unpack_bytes(dgi)
 
         obj = DistributedObject(state_server, sender, do_id, parent_id, zone_id, dclass, required, ram)
-
         state_server.objects[do_id] = obj
 
 
@@ -480,6 +578,8 @@ class StateServer(DownstreamMessageDirector, ChannelAllocator):
         self.loop.set_exception_handler(self._on_exception)
 
         self.objects = dict()
+        self.database_objects = set()
+        self.queries = {}
 
     def _on_exception(self, loop, context):
         print('err', context)

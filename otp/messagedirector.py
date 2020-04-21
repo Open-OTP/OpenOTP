@@ -119,10 +119,13 @@ class MessageDirector(Service):
 
         pos = dgi.tell()
 
-        for participant in receiving_participants:
-            _dgi = dg.iterator()
-            _dgi.seek(pos)
-            participant.handle_datagram(dg, _dgi)
+        try:
+            for participant in receiving_participants:
+                _dgi = dg.iterator()
+                _dgi.seek(pos)
+                participant.handle_datagram(dg, _dgi)
+        except Exception as e:
+            self.log.debug(f'Exception while handling datagram: {e.__class__}: {repr(e)}')
 
     async def route(self):
         while True:

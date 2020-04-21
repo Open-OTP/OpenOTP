@@ -66,7 +66,6 @@ class DBServerProtocol(MDUpstreamProtocol):
         self.service.loop.create_task(self.service.get_stored_values(sender, context, do_id, field_names))
 
     def handle_set_stored_values(self, sender, dgi):
-        context = dgi.get_uint32()
         do_id = dgi.get_uint32()
         field_count = dgi.get_uint16()
         fields = []
@@ -74,7 +73,7 @@ class DBServerProtocol(MDUpstreamProtocol):
             f = self.service.dc.fields[dgi.get_uint16()]()
             fields.append((f.name, f.unpack_bytes(dgi)))
 
-        self.service.loop.create_task(self.service.set_stored_values(sender, context, do_id, fields))
+        self.service.loop.create_task(self.service.set_stored_values(do_id, fields))
 
     def handle_account_query(self, sender, dgi):
         do_id = dgi.get_uint32()
@@ -151,11 +150,12 @@ class DBServer(DownstreamMessageDirector):
         except OTPQueryNotFound:
             field_dict = None
 
-        print('QUERY', sender, context, do_id, field_dict)
+        self.log.debug(f'Received query request from {sender} with context {context} for do_id: {do_id}.')
 
         dg = Datagram()
         dg.add_server_header([sender], DBSERVERS_CHANNEL, DBSERVER_GET_STORED_VALUES_RESP)
         dg.add_uint32(context)
+        dg.add_uint32(do_id)
         pos = dg.tell()
         dg.add_uint16(0)
 
@@ -178,12 +178,11 @@ class DBServer(DownstreamMessageDirector):
         dg.add_uint16(counter)
         self.send_datagram(dg)
 
-    async def set_stored_values(self, sender, context, do_id, fields):
+    async def set_stored_values(self, do_id, fields):
         await self.backend.set_fields(do_id, fields)
 
     def on_upstream_connect(self):
         self.subscribe_channel(self._client, DBSERVERS_CHANNEL)
-        print('subscribed to ', DBSERVERS_CHANNEL)
 
     async def query_account(self, sender, do_id):
         dclass = self.dc.namespace['Account']
@@ -191,14 +190,13 @@ class DBServer(DownstreamMessageDirector):
 
         temp = Datagram()
         temp.add_bytes(field_dict['ACCOUNT_AV_SET'])
-        print(field_dict)
         av_ids = dclass['ACCOUNT_AV_SET'].unpack_value(temp.iterator())
 
         dg = Datagram()
         dg.add_server_header([sender], DBSERVERS_CHANNEL, DBSERVER_ACCOUNT_QUERY_RESP)
 
         av_count = sum((1 if av_id else 0 for av_id in av_ids))
-        print('av count: %s' % av_count)
+        self.log.debug(f'Account query for {do_id} from {sender}: {field_dict}')
         dg.add_uint16(av_count)  # Av count
         for av_id in av_ids:
             if not av_id:
@@ -210,7 +208,7 @@ class DBServer(DownstreamMessageDirector):
             if wish_name is None:
                 wish_name = b'\x00\x00'
 
-            name_state = 'PENDING' #toon_fields['WishNameState'][2:].decode('ascii')
+            name_state = 'PENDING'
 
             dg.add_uint32(av_id)
             dg.add_bytes(toon_fields['setName'])

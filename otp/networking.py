@@ -157,7 +157,10 @@ class ToontownProtocol(asyncio.Protocol):
 
             dg = Datagram()
             dg.add_bytes(data)
-            self.receive_datagram(dg)
+            try:
+                self.receive_datagram(dg)
+            except Exception as e:
+                self.service.log.debug(f'Exception while receiving datagram: {e.__class__}: {repr(e)}')
 
     def receive_datagram(self, data: bytes):
         raise NotImplementedError

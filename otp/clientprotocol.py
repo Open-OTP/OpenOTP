@@ -119,7 +119,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.owned_objects: Dict[int, ObjectInfo] = {}
 
         self.account: Union[DISLAccount, None] = None
-        self.avatar = None
+        self.avatar_id: int = 0
         self.potential_avatars: List[PotentialAvatar] = []
 
     def disconnect(self, booted_index, booted_text):
@@ -138,10 +138,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
     def connection_lost(self, exc):
         ToontownProtocol.connection_lost(self, exc)
 
-        if self.avatar:
+        if self.avatar_id:
             dg = Datagram()
             dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_DELETE_RAM)
-            dg.add_uint32(self.avatar.do_id)
+            dg.add_uint32(self.avatar_id)
             self.service.send_datagram(dg)
 
         self.service.remove_participant(self)
@@ -292,30 +292,46 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.service.log.debug(f'client {self.channel} is setting their avatar to {av_id}')
 
-        self.avatar_id = av_id
-
         if not av_id:
             return
 
+        if self.avatar_id:
+            return
+
+        self.avatar_id = av_id
+
         self.state = ClientState.SETTING_AVATAR
 
-        self.tasks.append(self.service.loop.create_task(self.handle_avatar_info()))
+        account_id = self.account.disl_id
+        sender_channel = account_id << 32 | self.avatar_id
+        self.channel = sender_channel
+        self.subscribe_channel(self.channel)
+
+        dclass = self.service.dc_file.namespace['DistributedToon']
+
+        access = 2 if self.account.access == b'FULL' else 1
+
+        # These Fields are REQUIRED but not stored in db.
+        other_fields = (
+            (dclass['setAccess'], (access,)),
+            (dclass['setPreviousAccess'], (access,)),
+            (dclass['setAsGM'], (False,)),
+            (dclass['setBattleId'], (0,))
+        )
 
         dg = Datagram()
-        dg.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_GET_STORED_VALUES)
-        dg.add_uint32(1)
+        dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_CREATE_WITH_REQUIR_OTHER_CONTEXT)
         dg.add_uint32(av_id)
+        dg.add_uint32(0)
+        dg.add_uint32(0)
+        dg.add_channel(self.channel)
+        dg.add_uint16(dclass.number)
+        dg.add_uint16(len(other_fields))
 
-        pos = dg.tell()
-        dg.add_uint16(0)
-        count = 0
-        for field in self.service.dc_file.namespace['DistributedToon']:
-            if not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
-                dg.add_uint16(field.number)
-                count += 1
+        for f, arg in other_fields:
+            dg.add_uint16(f.number)
+            f.pack_value(dg, arg)
 
-        dg.seek(pos)
-        dg.add_uint16(count)
         self.service.send_datagram(dg)
 
     def receive_create_avatar(self, dgi):
@@ -337,7 +353,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         default_toon = dict(DEFAULT_TOON)
         default_toon['setDNAString'] = (dna,)
-        default_toon['setDISLId'] = (self.account.disl_id,)
+        default_toon['setDISLid'] = (self.account.disl_id,)
 
         count = 0
         for field in dclass.inherited_fields:
@@ -660,72 +676,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         else:
            self.service.log.debug(f'Client {self.channel} received unhandled upstream msg {msgtype}.')
 
-    async def handle_avatar_info(self):
-        f = DatagramFuture(self.service.loop, DBSERVER_GET_STORED_VALUES_RESP)
-        self.futures.append(f)
-        sender, dgi = await f
-
-        context = dgi.get_uint32()
-        field_count = dgi.get_uint16()
-
-        fields = {}
-
-        #AtomicField setAccess ['broadcast', 'ownrecv', 'required', 'ram', 'airecv'] 131
-        #AtomicField setAsGM ['required', 'ram', 'broadcast', 'ownrecv', 'airecv'] 132
-        #AtomicField setBattleId ['required', 'broadcast', 'ram'] 421
-
-        # AtomicField WishName ['db', 'ram'] 128
-        # AtomicField WishNameState ['db', 'ram'] 129
-        # AtomicField setDISLid ['ram', 'db', 'airecv'] 587
-
-        dclass = self.service.dc_file.namespace['DistributedToon']
-
-        o = ObjectInfo(self.avatar, dclass.number, 0, 0)
-        self.owned_objects[self.avatar_id] = o
-
-        for i in range(field_count):
-            number = dgi.get_uint16()
-            print('field', number)
-            fields[number] = self.service.dc_file.fields[number]().unpack_bytes(dgi)
-
-        print(fields)
-
-        access_field = dclass['setAccess']
-        prev_access_field = dclass['setPreviousAccess']
-        as_gm_field = dclass['setAsGM']
-        battle_id = dclass['setBattleId']
-
-        fields[access_field.number] = fields[prev_access_field.number]
-        fields[battle_id.number] = b'\x00\x00\x00\x00'
-        fields[as_gm_field.number] = b'\x01'
-
-        account_id = self.account.disl_id
-        sender_channel = account_id << 32 | self.avatar_id
-        self.channel = sender_channel
-        self.subscribe_channel(self.channel)
-
-        dg = Datagram()
-        dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_GENERATE_WITH_REQUIRED)
-        dg.add_uint32(0)
-        dg.add_uint32(0)
-        dg.add_uint16(dclass.number)
-        dg.add_uint32(self.avatar_id)
-
-        for field in dclass.inherited_fields:
-            if field.is_required:
-                print('SS pack %s' % field.name)
-                dg.add_bytes(fields[field.number])
-
-        self.service.send_datagram(dg)
-
-        self.av_fields = fields
-
-        dg = Datagram()
-        dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_SET_OWNER_RECV)
-        dg.add_uint32(self.avatar_id)
-        dg.add_channel(self.channel)
-        self.service.send_datagram(dg)
-
     def handle_update_field(self, dgi, sender):
         if sender == self.channel:
             return
@@ -741,17 +691,13 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         zone_id = dgi.get_uint32()
         dc_id = dgi.get_uint16()
 
-        dclass = self.service.dc_file.classes[dc_id]
+        self.owned_objects[do_id] = ObjectInfo(do_id, dc_id, parent_id, zone_id)
 
         resp = Datagram()
         resp.add_uint16(CLIENT_GET_AVATAR_DETAILS_RESP)
         resp.add_uint32(self.avatar_id)
         resp.add_uint8(0)  # Return code
-
-        for field in dclass.inherited_fields:
-            if not isinstance(field, MolecularField) and field.is_required:
-                resp.add_bytes(self.av_fields[field.number])
-
+        resp.add_bytes(dgi.get_remaining())
         self.send_datagram(resp)
 
     def handle_location_change(self, dgi, sender):
