@@ -121,7 +121,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.transport.write(resp.get_length().to_bytes(2, byteorder='little'))
         self.transport.write(resp.get_message().tobytes())
         self.transport.close()
-        self.service.log.debug(f'Booted client {self.channel} with index {booted_index} and text: "{booted_index}"')
+        self.service.log.debug(f'Booted client {self.channel} with index {booted_index} and text: "{booted_text}"')
 
     def connection_lost(self, exc):
         ToontownProtocol.connection_lost(self, exc)
@@ -173,6 +173,12 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 self.receive_set_name_pattern(dgi)
             elif msgtype == CLIENT_REMOVE_INTEREST:
                 self.receive_remove_interest(dgi)
+            elif msgtype == CLIENT_OBJECT_UPDATE_FIELD:
+                do_id = dgi.get_uint32()
+                if do_id == OTP_DO_ID_CENTRAL_LOGGER:
+                    self.receive_update_field(dgi, do_id)
+                else:
+                    self.service.log.debug(f'Unexpected field update for do_id {do_id} during avatar chooser.')
             else:
                 self.service.log.debug(f'Unexpected message type during avatar chooser {msgtype}.')
         elif self.state == ClientState.CREATING_AVATAR:
@@ -180,6 +186,12 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 self.receive_set_avatar(dgi)
             elif msgtype == CLIENT_SET_WISHNAME:
                 self.receive_set_wishname(dgi)
+            elif msgtype == CLIENT_OBJECT_UPDATE_FIELD:
+                do_id = dgi.get_uint32()
+                if do_id == OTP_DO_ID_CENTRAL_LOGGER:
+                    self.receive_update_field(dgi, do_id)
+                else:
+                    self.service.log.debug(f'Unexpected field update for do_id {do_id} during avatar creation.')
             else:
                 self.service.log.debug(f'Unexpected message type during avatar creation {msgtype}.')
         else:
@@ -196,24 +208,37 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             else:
                 self.service.log.debug(f'Unhandled msg type {msgtype} in state {self.state}')
 
-    def receive_update_field(self, dgi):
-        do_id = dgi.get_uint32()
+    def receive_update_field(self, dgi, do_id=None):
+        if do_id is None:
+            do_id = dgi.get_uint32()
+
         field_number = dgi.get_uint16()
 
         field = self.service.dc_file.fields[field_number]()
+
+        sendable = False
+
+        if 'ownsend' in field.keywords and do_id in self.owned_objects:
+            sendable = True
+        elif 'clsend' in field.keywords:
+            sendable = True
+
+        if not sendable:
+            self.disconnect(ClientDisconnect.INTERNAL_ERROR, 'Tried to send nonsendable field to object.')
+            self.service.log.warn(f'Client {self.channel} tried to update {do_id} with nonsendable field {field.name}. '
+                                  f'DCField keywords: {field.keywords}')
+            return
 
         pos = dgi.tell()
         field.unpack_bytes(dgi)
         dgi.seek(pos)
 
-        if do_id in self.owned_objects:
-            resp = Datagram()
-            resp.add_server_header([do_id], self.channel, STATESERVER_OBJECT_UPDATE_FIELD)
-            resp.add_uint32(do_id)
-            resp.add_uint16(field_number)
-            resp.add_bytes(dgi.get_remaining())
-            self.service.send_datagram(resp)
-            return
+        resp = Datagram()
+        resp.add_server_header([do_id], self.channel, STATESERVER_OBJECT_UPDATE_FIELD)
+        resp.add_uint32(do_id)
+        resp.add_uint16(field_number)
+        resp.add_bytes(dgi.get_remaining())
+        self.service.send_datagram(resp)
 
     def receive_client_location(self, dgi):
         do_id = dgi.get_uint32()
@@ -656,7 +681,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         for field in dclass.inherited_fields:
             if not isinstance(field, MolecularField) and field.is_required:
-                print('pack %s' % field.name)
                 resp.add_bytes(self.av_fields[field.number])
 
         self.send_datagram(resp)
