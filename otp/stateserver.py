@@ -33,7 +33,9 @@ class DistributedObject(MDParticipant):
         self.parent_synced = False
         self.next_context = 0
         self.zone_objects = {}
-        print('NEW OBJECT', self.do_id, self.dclass.name if self.dclass else 'ROOT', self.required)
+
+        if self.dclass:
+            self.service.log.debug(f'Generating new object {do_id} with dclass {self.dclass.name} in location {parent_id} {zone_id}')
 
         self.handle_location_change(parent_id, zone_id, sender)
         self.subscribe_channel(do_id)
@@ -203,7 +205,9 @@ class DistributedObject(MDParticipant):
 
         del self.service.objects[self.do_id]
 
-        self.service.upstream.remove_participant(self)
+        self.service.remove_participant(self)
+
+        self.service.log.debug(f'Object {self.do_id} has been deleted.')
 
     def delete_children(self, sender):
         pass
@@ -252,10 +256,9 @@ class DistributedObject(MDParticipant):
             dg.append_data(self.ram[field.name])
 
     def handle_datagram(self, dg, dgi):
-        print('handle_datagram', self.do_id, dg.get_message().tobytes())
         sender = dgi.get_channel()
         msgtype = dgi.get_uint16()
-        print('DistributedObject.handle_datagram', self.do_id, 'from', sender, 'msg', msgtype)
+        self.service.log.debug(f'Distributed Object {self.do_id} received msgtype {MSG_TO_NAME_DICT[msgtype]} from {sender}')
 
         if msgtype == STATESERVER_OBJECT_DELETE_RAM:
             self.annihilate(sender)
@@ -371,7 +374,7 @@ class StateServerProtocol(MDUpstreamProtocol):
     def handle_datagram(self, dg, dgi):
         sender = dgi.get_channel()
         msgtype = dgi.get_uint16()
-        print('state server: ', sender, msgtype)
+        self.service.log.debug(f'State server directly received msgtype {MSG_TO_NAME_DICT[msgtype]} from {sender}.')
 
         if msgtype == STATESERVER_OBJECT_GENERATE_WITH_REQUIRED:
             self.handle_generate(dgi, sender, False)
@@ -385,7 +388,6 @@ class StateServerProtocol(MDUpstreamProtocol):
             self.handle_add_ai(dgi, sender)
         elif msgtype == STATESERVER_OBJECT_SET_OWNER_RECV:
             self.handle_set_owner(dgi, sender)
-
 
     def handle_db_generate(self, dgi, sender, other=False):
         parent_id = dgi.get_uint32()
@@ -419,28 +421,24 @@ class StateServerProtocol(MDUpstreamProtocol):
         zone_id = dgi.get_uint32()
         number = dgi.get_uint16()
         do_id = dgi.get_uint32()
-        print('HANDLE_GENERATE', parent_id, zone_id, number, do_id)
 
         state_server = self.service
 
         if do_id in state_server.objects:
-            print(f'Received duplicate generate for object {do_id}')
+            self.service.log.debug(f'Received duplicate generate for object {do_id}')
             return
 
         if number > len(state_server.dc_file.classes):
-            print(f'Received create for unknown dclass with class id {number}')
+            self.service.log.debug(f'Received create for unknown dclass with class id {number}')
             return
 
         dclass = state_server.dc_file.classes[number]
-
-        print('gen', dclass.name)
 
         required = {}
         ram = {}
 
         for field in dclass.inherited_fields:
             if field.is_required:
-                print('field.name', field.name)
                 required[field.name] = field.unpack_bytes(dgi)
 
         if other:
@@ -452,7 +450,7 @@ class StateServerProtocol(MDUpstreamProtocol):
                 field = dclass.fields[field_number]
 
                 if 'ram' not in field.keywords:
-                    print(f'Received non-RAM field {field.name} within an OTHER section.\n')
+                    self.service.log.debug(f'Received non-RAM field {field.name} within an OTHER section.\n')
                     field.unpack_bytes(dgi)
                     continue
                 else:
@@ -504,7 +502,6 @@ class StateServer(DownstreamMessageDirector, ChannelAllocator):
             try:
                 obj = self.objects[parent_id]
             except KeyError:
-                print('Could not find parent_id ', parent_id)
                 return None
             parent_id = obj.parent_id
             ai_channel = obj.ai_channel

@@ -4,6 +4,8 @@ from dc.parser import parse_dc_file
 from otp.constants import *
 from otp.messagetypes import *
 
+from dc.util import Datagram
+
 import asyncio
 
 
@@ -53,6 +55,12 @@ class Uberdog(DownstreamMessageDirector):
 
         dg = self.dclass.ai_format_generate(self, self.GLOBAL_ID, OTP_DO_ID_TOONTOWN, OTP_ZONE_ID_MANAGEMENT,
                                             STATESERVERS_CHANNEL, self.GLOBAL_ID, optional_fields=None)
+        self.send_datagram(dg)
+
+        dg = Datagram()
+        dg.add_server_control_header(CONTROL_ADD_POST_REMOVE)
+        dg.add_server_header([self.GLOBAL_ID], self.GLOBAL_ID, STATESERVER_OBJECT_DELETE_RAM)
+        dg.add_uint32(self.GLOBAL_ID)
         self.send_datagram(dg)
 
     def receive_update(self, sender, dgi):

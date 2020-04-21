@@ -15,12 +15,21 @@ class MDProtocol(ToontownProtocol, MDParticipant):
         ToontownProtocol.__init__(self, service)
         MDParticipant.__init__(self, service)
 
+        self.post_removes: List[Datagram] = []
+
     def connection_made(self, transport):
         ToontownProtocol.connection_made(self, transport)
 
     def connection_lost(self, exc):
         ToontownProtocol.connection_lost(self, exc)
         self.service.remove_participant(self)
+        self.post_remove()
+
+    def post_remove(self):
+        self.service.log.debug(f'Sending out post removes for participant.')
+        while self.post_removes:
+            dg = self.post_removes.pop(0)
+            self.service.q.put_nowait((None, dg))
 
     def receive_datagram(self, dg):
         dgi = dg.iterator()
@@ -48,16 +57,12 @@ class MDProtocol(ToontownProtocol, MDParticipant):
                     if channel in self.channels:
                         self.channels.remove(channel)
             elif msg_type == CONTROL_ADD_POST_REMOVE:
-                sender = dgi.get_channel()
                 post_dg = Datagram()
                 post_dg.add_bytes(dgi.get_bytes(dgi.remaining()))
-                if sender not in self.service.post_removes:
-                    self.service.post_removes[sender] = list()
-                self.service.post_removes[sender].append(post_dg)
+                self.service.log.debug(f'Received post remove:{post_dg.get_message().tobytes()}')
+                self.post_removes.append(post_dg)
             elif msg_type == CONTROL_CLEAR_POST_REMOVE:
-                sender = dgi.get_channel()
-                if sender in self.service.post_removes:
-                    del self.service.post_removes[sender]
+                del self.post_removes[:]
         else:
             self.service.q.put_nowait((None, dg))
 
@@ -131,7 +136,6 @@ class MasterMessageDirector(MessageDirector, UpstreamServer):
     def __init__(self, loop):
         MessageDirector.__init__(self)
         UpstreamServer.__init__(self, loop)
-        self.post_removes: Dict[int, List[Datagram]] = {}
         self.loop.set_exception_handler(self._on_exception)
 
     def _on_exception(self, loop, context):
