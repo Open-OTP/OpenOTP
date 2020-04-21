@@ -56,7 +56,6 @@ class DistributedObject(MDParticipant):
 
             if not client_only or field.is_broadcast or 'clrecv' in field.keywords or (also_owner and field.is_ownrecv):
                 dg.add_bytes(self.required[field.name])
-                print('appending data for FIELD', field.name, dg.get_length())
 
     def append_other_data(self, dg, client_only, also_owner):
         if client_only:
@@ -90,7 +89,6 @@ class DistributedObject(MDParticipant):
         self.append_required_data(dg, True, False)
         if self.ram:
             self.append_other_data(dg, True, False)
-        print('send_location_entry', dg.get_message())
         self.service.send_datagram(dg)
 
     def send_ai_entry(self, location):
@@ -101,7 +99,6 @@ class DistributedObject(MDParticipant):
         if self.ram:
             self.append_other_data(dg, False, False)
 
-        print('sending ai entry', dg.get_message())
         self.service.send_datagram(dg)
 
     def send_owner_entry(self, location):
@@ -146,7 +143,6 @@ class DistributedObject(MDParticipant):
                     if new_ai_channel != self.ai_channel:
                         self.ai_channel = new_ai_channel
                         self.send_ai_entry(new_ai_channel)
-                        print('RESOLVED AI CHANNEL', self.ai_channel)
 
                 targets.append(new_parent)
 
@@ -166,8 +162,6 @@ class DistributedObject(MDParticipant):
         dg.add_uint32(new_zone)
         dg.add_uint32(old_parent)
         dg.add_uint32(old_zone)
-
-        print('STATESERVER_OBJECT_CHANGE_ZONE', self.do_id, new_parent, new_zone, old_parent, old_zone, 'TARGETS:', targets)
 
         self.service.send_datagram(dg)
 
