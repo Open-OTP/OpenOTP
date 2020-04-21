@@ -298,21 +298,16 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         pos = dg.tell()
         dg.add_uint16(0)
 
-        try:
+        default_toon = dict(DEFAULT_TOON)
+        default_toon['setDNAString'] = (dna,)
+        default_toon['setDISLId'] = (self.account.disl_id,)
 
-            default_toon = dict(DEFAULT_TOON)
-            default_toon['setDNAString'] = (dna,)
-            default_toon['setDISLId'] = (self.account.disl_id,)
-
-            count = 0
-            for field in dclass.inherited_fields:
-                if not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
-                    dg.add_uint16(field.number)
-                    field.pack_value(dg, default_toon[field.name])
-                    count += 1
-        except Exception as e:
-            print(e, e.__class__, e.args)
-            return
+        count = 0
+        for field in dclass.inherited_fields:
+            if not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
+                dg.add_uint16(field.number)
+                field.pack_value(dg, default_toon[field.name])
+                count += 1
 
         dg.seek(pos)
         dg.add_uint16(count)
