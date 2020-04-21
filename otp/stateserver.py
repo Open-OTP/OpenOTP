@@ -488,6 +488,15 @@ class StateServerProtocol(MDUpstreamProtocol):
             else:
                 ram[field.name] = data
 
+            if 'db' in field.keywords:
+                dg = Datagram()
+                dg.add_server_header([DBSERVERS_CHANNEL], do_id, DBSERVER_SET_STORED_VALUES)
+                dg.add_uint32(do_id)
+                dg.add_uint16(1)
+                dg.add_uint16(field.number)
+                dg.add_bytes(data)
+                self.service.send_datagram(dg)
+
         self.service.log.debug(f'Activating {do_id} with required:{required}\nram:{ram}\n')
 
         obj = DistributedObject(state_server, STATESERVERS_CHANNEL, do_id, parent_id, zone_id, dclass, required, ram,

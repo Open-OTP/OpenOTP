@@ -120,6 +120,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
+        self.created_av_id: int = 0
+        self.potential_avatar = None
         self.potential_avatars: List[PotentialAvatar] = []
 
     def disconnect(self, booted_index, booted_text):
@@ -298,7 +300,19 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if self.avatar_id:
             return
 
+        pot_av = None
+
+        for pa in self.potential_avatars:
+            if pa and pa.do_id == av_id:
+                pot_av = pa
+                break
+
+        if pot_av is None:
+            self.disconnect(ClientDisconnect.INTERNAL_ERROR, 'Could not find avatar on account.')
+            return
+
         self.avatar_id = av_id
+        self.created_av_id = 0
 
         self.state = ClientState.SETTING_AVATAR
 
@@ -312,12 +326,16 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         access = 2 if self.account.access == b'FULL' else 1
 
         # These Fields are REQUIRED but not stored in db.
-        other_fields = (
+        other_fields = [
             (dclass['setAccess'], (access,)),
             (dclass['setPreviousAccess'], (access,)),
             (dclass['setAsGM'], (False,)),
             (dclass['setBattleId'], (0,))
-        )
+        ]
+
+        if pot_av.approved_name:
+            other_fields.append((dclass['setName'], (pot_av.approved_name,)))
+            pot_av.approved_name = ''
 
         dg = Datagram()
         dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_CREATE_WITH_REQUIR_OTHER_CONTEXT)
@@ -339,6 +357,13 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         dna = dgi.get_string16()
         pos = dgi.get_uint8()
         self.service.log.debug(f'Client {self.channel} requesting avatar creation with dna {dna.encode("utf-8")} and pos {pos}.')
+
+        if not 0 <= pos < 6 or self.potential_avatars[pos] is not None:
+            self.service.log.debug(f'Client {self.channel} tried creating avatar in invalid position.')
+            return
+
+        self.potential_avatar = PotentialAvatar(do_id=0, name='Toon', wish_name='', approved_name='',
+                                                      rejected_name='', dna_string=dna, index=pos)
 
         dclass = self.service.dc_file.namespace['DistributedToon']
 
@@ -378,6 +403,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         context = dgi.get_uint32()
         return_code = dgi.get_uint8()
         av_id = dgi.get_uint32()
+
+        av = self.potential_avatar
+        av.do_id = av_id
+        self.potential_avatars[av.index] = av
+        self.potential_avatar = None
 
         resp = Datagram()
         resp.add_uint16(CLIENT_CREATE_AVATAR_RESP)
@@ -456,6 +486,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         name = f'{title} {first} {last_prefix}{last_suffix}'
 
+        for pot_av in self.potential_avatars:
+            if pot_av and pot_av.do_id == av_id:
+                pot_av.approved_name = name
+
         resp.add_uint8(0)
         self.send_datagram(resp)
 
@@ -533,14 +567,14 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         pos = dgi.tell()
 
-        avatar_info = []
+        avatar_info = [None] * 6
 
         for i in range(dgi.get_uint16()):
             pot_av = PotentialAvatar(do_id=dgi.get_uint32(), name=dgi.get_string16(), wish_name=dgi.get_string16(),
                                      approved_name=dgi.get_string16(), rejected_name=dgi.get_string16(),
                                      dna_string=dgi.get_string16(), index=dgi.get_uint8())
 
-            avatar_info.append(pot_av)
+            avatar_info[pot_av.index] = pot_av
 
             dgi.get_uint8()
 

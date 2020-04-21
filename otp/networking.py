@@ -1,6 +1,7 @@
 from asyncio import Queue
 from dc.util import Datagram
 import logging
+import traceback
 
 
 class Service:
@@ -160,7 +161,7 @@ class ToontownProtocol(asyncio.Protocol):
             try:
                 self.receive_datagram(dg)
             except Exception as e:
-                self.service.log.debug(f'Exception while receiving datagram: {e.__class__}: {repr(e)}')
+                self.service.log.debug(f'Exception while receiving datagram: {e.__class__}: {repr(e)}\n{traceback.print_exc()}')
 
     def receive_datagram(self, data: bytes):
         raise NotImplementedError
