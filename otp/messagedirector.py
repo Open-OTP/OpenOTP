@@ -92,7 +92,8 @@ class MessageDirector(Service):
             participant.channels.remove(channel)
 
         if channel in self.channel_subscriptions:
-            self.channel_subscriptions[channel].remove(participant)
+            if participant in self.channel_subscriptions[channel]:
+                self.channel_subscriptions[channel].remove(participant)
 
     def unsubscribe_all(self, participant: MDParticipant):
         while participant.channels:
