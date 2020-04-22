@@ -196,7 +196,7 @@ class DBServer(DownstreamMessageDirector):
 
         dg = Datagram()
         dg.add_server_header([sender], DBSERVERS_CHANNEL, DBSERVER_ACCOUNT_QUERY_RESP)
-
+        dg.add_bytes(field_dict['ACCOUNT_AV_SET_DEL'])
         av_count = sum((1 if av_id else 0 for av_id in av_ids))
         self.log.debug(f'Account query for {do_id} from {sender}: {field_dict}')
         dg.add_uint16(av_count)  # Av count
@@ -230,7 +230,6 @@ class DBServer(DownstreamMessageDirector):
             dg.add_bytes(rejected_name)
             dg.add_bytes(toon_fields['setDNAString'])
             dg.add_uint8(av_ids.index(av_id))
-            dg.add_uint8(1)
 
         self.send_datagram(dg)
 

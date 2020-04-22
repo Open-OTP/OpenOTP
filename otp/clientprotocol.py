@@ -2,7 +2,7 @@ import time
 import json
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 
 
 from Crypto.Cipher import AES
@@ -124,6 +124,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.wanted_name: str = ''
         self.potential_avatar = None
         self.potential_avatars: List[PotentialAvatar] = []
+        self.avs_deleted: List[Tuple[int, int]] = []
 
     def disconnect(self, booted_index, booted_text):
         for task in self.tasks:
@@ -192,6 +193,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                     self.receive_update_field(dgi, do_id)
                 else:
                     self.service.log.debug(f'Unexpected field update for do_id {do_id} during avatar chooser.')
+            elif msgtype == CLIENT_DELETE_AVATAR:
+                self.receive_delete_avatar(dgi)
             else:
                 self.service.log.debug(f'Unexpected message type during avatar chooser {msgtype}.')
         elif self.state == ClientState.CREATING_AVATAR:
@@ -429,13 +432,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         av_id = dgi.get_uint32()
         name = dgi.get_string16()
 
-        av = None
-
-        if av_id:
-            for pot_av in self.potential_avatars:
-                if pot_av and pot_av.do_id == av_id:
-                    av = pot_av
-                    break
+        av = self.get_potential_avatar(av_id)
 
         self.service.log.debug(f'Received wishname request from {self.channel} for avatar {av_id} for name "{name}".')
 
@@ -517,6 +514,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         for pot_av in self.potential_avatars:
             if pot_av and pot_av.do_id == av_id:
                 pot_av.approved_name = name
+                break
 
         resp.add_uint8(0)
         self.send_datagram(resp)
@@ -531,6 +529,52 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             return title.capitalize() if flag else title
         else:
             return ''
+
+    def receive_delete_avatar(self, dgi):
+        av_id = dgi.get_uint32()
+
+        av = self.get_potential_avatar(av_id)
+
+        if not av:
+            return
+
+        self.potential_avatars[av.index] = None
+        avatars = [pot_av.do_id if pot_av else 0 for pot_av in self.potential_avatars]
+        self.avs_deleted.append((av_id, int(time.time())))
+
+        field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET']
+        del_field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET_DEL']
+
+        dg = Datagram()
+        dg.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_SET_STORED_VALUES)
+        dg.add_uint32(self.account.disl_id)
+        dg.add_uint16(2)
+        dg.add_uint16(field.number)
+        field.pack_value(dg, avatars)
+        dg.add_uint16(del_field.number)
+        del_field.pack_value(dg, self.avs_deleted)
+        self.service.send_datagram(dg)
+
+        resp = Datagram()
+        resp.add_uint16(CLIENT_DELETE_AVATAR_RESP)
+        resp.add_uint8(0)  # Return code
+
+        av_count = sum((1 if pot_av else 0 for pot_av in self.potential_avatars))
+        dg.add_uint16(av_count)
+
+        for pot_av in self.potential_avatars:
+            if not pot_av:
+                continue
+            dg.add_uint32(pot_av.do_id)
+            dg.add_string16(pot_av.name.encode('utf-8'))
+            dg.add_string16(pot_av.wish_name.encode('utf-8'))
+            dg.add_string16(pot_av.approved_name.encode('utf-8'))
+            dg.add_string16(pot_av.rejected_name.encode('utf-8'))
+            dg.add_string16(pot_av.dna_string.encode('utf-8'))
+            dg.add_uint8(pot_av.index)
+
+        self.send_datagram(resp)
+
 
     def receive_remove_interest(self, dgi):
         handle = dgi.get_uint16()
@@ -593,6 +637,16 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.futures.append(f)
         sender, dgi = await f
 
+        av_del_field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET_DEL']
+        self.service.log.debug('Begin unpack of deleted avatars.')
+        try:
+            self.avs_deleted = av_del_field.unpack_value(dgi)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            return
+        self.service.log.debug(f'Avatars deleted list for {self.account.username}: {self.avs_deleted}')
+
         pos = dgi.tell()
 
         avatar_info = [None] * 6
@@ -603,8 +657,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                                      dna_string=dgi.get_string16(), index=dgi.get_uint8())
 
             avatar_info[pot_av.index] = pot_av
-
-            dgi.get_uint8()
 
         self.potential_avatars = avatar_info
 
@@ -874,6 +926,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(do_id)
         resp.add_bytes(dgi.get_remaining())
         self.send_datagram(resp)
+
+    def get_potential_avatar(self, av_id):
+        for pot_av in self.potential_avatars:
+            if pot_av and pot_av.do_id == av_id:
+                return pot_av
 
     def send_go_get_lost(self, booted_index, booted_text):
         resp = Datagram()
