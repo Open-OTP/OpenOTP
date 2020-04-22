@@ -255,6 +255,7 @@ class DistributedObject(MDParticipant):
             dg.add_uint16(field.number)
             dg.add_bytes(data)
             self.service.send_datagram(dg)
+            self.service.log.debug(f'Object {self.do_id} saved value {data} for field {field.name} to database.')
 
     def handle_one_get(self, dg, field_id, subfield=False):
         field = self.dclass.dcfile().fields[field_id]()

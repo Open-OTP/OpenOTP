@@ -179,6 +179,7 @@ class DBServer(DownstreamMessageDirector):
         self.send_datagram(dg)
 
     async def set_stored_values(self, do_id, fields):
+        self.log.debug(f'Setting stored values for {do_id}: {fields}')
         await self.backend.set_fields(do_id, fields)
 
     def on_upstream_connect(self):
@@ -186,6 +187,7 @@ class DBServer(DownstreamMessageDirector):
 
     async def query_account(self, sender, do_id):
         dclass = self.dc.namespace['Account']
+        toon_dclass = self.dc.namespace['DistributedToon']
         field_dict = await self.backend.query_object_all(do_id, dclass.name)
 
         temp = Datagram()
@@ -205,15 +207,14 @@ class DBServer(DownstreamMessageDirector):
 
             wish_name = toon_fields['WishName']
 
-            if wish_name is None:
-                wish_name = b'\x00\x00'
-
-            name_state = 'PENDING'
+            temp = Datagram()
+            temp.add_bytes(toon_fields['WishNameState'])
+            name_state = toon_dclass['WishNameState'].unpack_value(temp.iterator())
 
             dg.add_uint32(av_id)
             dg.add_bytes(toon_fields['setName'])
-            dg.add_bytes(wish_name)
 
+            pending_name = b'\x00\x00'
             approved_name = b'\x00\x00'
             rejected_name = b'\x00\x00'
 
@@ -221,7 +222,10 @@ class DBServer(DownstreamMessageDirector):
                 approved_name = wish_name
             elif name_state == 'REJECTED':
                 rejected_name = wish_name
+            else:
+                pending_name = wish_name
 
+            dg.add_bytes(pending_name)
             dg.add_bytes(approved_name)
             dg.add_bytes(rejected_name)
             dg.add_bytes(toon_fields['setDNAString'])

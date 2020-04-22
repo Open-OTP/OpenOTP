@@ -121,6 +121,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
         self.created_av_id: int = 0
+        self.wanted_name: str = ''
         self.potential_avatar = None
         self.potential_avatars: List[PotentialAvatar] = []
 
@@ -379,10 +380,14 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         default_toon = dict(DEFAULT_TOON)
         default_toon['setDNAString'] = (dna,)
         default_toon['setDISLid'] = (self.account.disl_id,)
+        default_toon['WishName'] = ('',)
+        default_toon['WishNameState'] = ('CLOSED',)
 
         count = 0
         for field in dclass.inherited_fields:
-            if not isinstance(field, MolecularField) and field.is_required and 'db' in field.keywords:
+            if not isinstance(field, MolecularField) and 'db' in field.keywords:
+                if field.name == 'DcObjectType':
+                    continue
                 dg.add_uint16(field.number)
                 field.pack_value(dg, default_toon[field.name])
                 count += 1
@@ -424,6 +429,14 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         av_id = dgi.get_uint32()
         name = dgi.get_string16()
 
+        av = None
+
+        if av_id:
+            for pot_av in self.potential_avatars:
+                if pot_av and pot_av.do_id == av_id:
+                    av = pot_av
+                    break
+
         self.service.log.debug(f'Received wishname request from {self.channel} for avatar {av_id} for name "{name}".')
 
         pending = name.encode('utf-8')
@@ -441,6 +454,21 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_string16(rejected)
 
         self.send_datagram(resp)
+
+        if av_id and av:
+            dclass = self.service.dc_file.namespace['DistributedToon']
+            wishname_field = dclass['WishName']
+            wishname_state_field = dclass['WishNameState']
+
+            resp = Datagram()
+            resp.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_SET_STORED_VALUES)
+            resp.add_uint32(av_id)
+            resp.add_uint16(2)
+            resp.add_uint16(wishname_state_field.number)
+            wishname_state_field.pack_value(resp, ('PENDING',))
+            resp.add_uint16(wishname_field.number)
+            wishname_field.pack_value(resp, (name,))
+            self.service.send_datagram(resp)
 
     def receive_set_name_pattern(self, dgi):
         av_id = dgi.get_uint32()
