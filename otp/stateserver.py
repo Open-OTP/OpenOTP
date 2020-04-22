@@ -277,8 +277,10 @@ class DistributedObject(MDParticipant):
         self.service.log.debug(f'Distributed Object {self.do_id} received msgtype {MSG_TO_NAME_DICT[msgtype]} from {sender}')
 
         if msgtype == STATESERVER_OBJECT_DELETE_RAM:
-            self.annihilate(sender)
-            return
+            do_id = dgi.get_uint32()
+            if do_id == self.do_id or do_id == self.parent_id:
+                self.annihilate(sender)
+                return
         elif msgtype == STATESERVER_OBJECT_UPDATE_FIELD:
             if self.do_id != dgi.get_uint32():
                 return

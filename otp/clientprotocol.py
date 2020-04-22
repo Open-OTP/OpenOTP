@@ -144,7 +144,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         if self.avatar_id:
             dg = Datagram()
-            dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_DELETE_RAM)
+            dg.add_server_header([self.avatar_id], self.channel, STATESERVER_OBJECT_DELETE_RAM)
             dg.add_uint32(self.avatar_id)
             self.service.send_datagram(dg)
 
