@@ -12,6 +12,7 @@ from panda3d.core import GraphicsEngine, ClockObject, TrueClock, PandaNode
 from otp.messagetypes import *
 from dc.util import Datagram
 from otp.constants import *
+from otp.zone import *
 
 import time
 
@@ -367,6 +368,12 @@ class AIRepository:
 
         self.district = ToontownDistrictAI(self)
         self.generate_with_required(self.district, OTP_DO_ID_TOONTOWN, OTP_ZONE_ID_DISTRICTS)
+
+        post_remove = Datagram()
+        post_remove.add_server_control_header(CONTROL_ADD_POST_REMOVE)
+        post_remove.add_server_header([STATESERVERS_CHANNEL, ], self.our_channel, STATESERVER_SHARD_REST)
+        post_remove.add_channel(self.our_channel)
+        self.send(post_remove)
 
         dg = Datagram()
         dg.add_server_header([STATESERVERS_CHANNEL], self.our_channel, STATESERVER_ADD_AI_RECV)

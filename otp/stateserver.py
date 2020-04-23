@@ -179,10 +179,10 @@ class DistributedObject(MDParticipant):
         pass
 
     def annihilate(self, sender, notify_parent=False):
-        targets = set()
+        targets = list()
 
         if self.parent_id:
-            targets.add(location_as_channel(self.parent_id, self.zone_id))
+            targets.append(location_as_channel(self.parent_id, self.zone_id))
 
             if notify_parent:
                 dg = Datagram()
@@ -195,12 +195,12 @@ class DistributedObject(MDParticipant):
                 self.service.send_datagram(dg)
 
         if self.owner_channel:
-            targets.add(self.owner_channel)
+            targets.append(self.owner_channel)
         if self.ai_channel:
-            targets.add(self.ai_channel)
+            targets.append(self.ai_channel)
 
         dg = Datagram()
-        dg.add_server_header([self.parent_id], sender, STATESERVER_OBJECT_DELETE_RAM)
+        dg.add_server_header(targets, sender, STATESERVER_OBJECT_DELETE_RAM)
         dg.add_uint32(self.do_id)
         self.service.send_datagram(dg)
 
@@ -407,6 +407,8 @@ class StateServerProtocol(MDUpstreamProtocol):
             self.handle_set_owner(dgi, sender)
         elif msgtype == DBSERVER_GET_STORED_VALUES_RESP:
             self.activate_callback(dgi)
+        elif msgtype == STATESERVER_SHARD_REST:
+            self.handle_shard_rest(dgi)
 
     def handle_db_generate(self, dgi, sender, other=False):
         do_id = dgi.get_uint32()
@@ -568,6 +570,12 @@ class StateServerProtocol(MDUpstreamProtocol):
 
         obj = DistributedObject(state_server, sender, do_id, parent_id, zone_id, dclass, required, ram)
         state_server.objects[do_id] = obj
+
+    def handle_shard_rest(self, dgi):
+        ai_channel = dgi.get_channel()
+
+        for object_id in list(self.service.objects.keys()):
+            self.service.objects[object_id].annihilate(ai_channel)
 
 
 from dc.parser import parse_dc_file

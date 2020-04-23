@@ -150,6 +150,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.service.remove_participant(self)
 
+    def connection_made(self, transport):
+        ToontownProtocol.connection_made(self, transport)
+        self.subscribe_channel(CLIENTS_CHANNEL)
+
     def receive_datagram(self, dg):
         dgi = dg.iterator()
         msgtype = dgi.get_uint16()
@@ -694,6 +698,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
             return
 
+        sender_channel = self.account.disl_id << 32
+        self.channel = sender_channel
+        self.subscribe_channel(self.channel)
+
         resp = Datagram()
         resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
 
@@ -787,6 +795,16 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.handle_interest_done(dgi)
         elif msgtype == STATESERVER_OBJECT_UPDATE_FIELD:
             self.handle_update_field(dgi, sender)
+        elif msgtype == STATESERVER_OBJECT_DELETE_RAM:
+            do_id = dgi.get_uint32()
+
+            if do_id == self.avatar_id:
+                if sender == self.account.disl_id << 32:
+                    self.disconnect(ClientDisconnect.RELOGGED, 'redundant login')
+                else:
+                    self.disconnect(ClientDisconnect.SHARD_DISCONNECT, 'district reset')
+            else:
+                self.send_remove_object(do_id)
         else:
            self.service.log.debug(f'Client {self.channel} received unhandled upstream msg {msgtype}.')
 
