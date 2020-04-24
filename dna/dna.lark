@@ -3,33 +3,33 @@ dna: (store_font | store_texture | model | group | store_suit_point)+
 group: KW_GROUP STRING_LITERAL "[" (group | visgroup | prop | street | flatbuilding | landmark | anim_building | interactive_prop | node)* "]"
 visgroup: KW_VISGROUP STRING_LITERAL "[" vis (group | visgroup | prop | node | landmark | flatbuilding | suit_edge | battle_cell | interactive_prop | street | anim_prop)* "]"
 node: KW_NODE STRING_LITERAL "[" (prop | landmark | street | flatbuilding)* "]"
-street: KW_STREET STRING_LITERAL "[" (node_properties | code | texture)+ "]"
+street: KW_STREET STRING_LITERAL "[" (_node_properties | code | texture)+ "]"
 vis: KW_VIS "[" STRING_LITERAL+ "]"
 
 
-landmark: KW_LANDMARK STRING_LITERAL "[" (code | node_properties | title | door | sign | buildingtype | prop)* "]"
-anim_building: KW_ANIM_BUILDING STRING_LITERAL "[" (code | node_properties | title | door | sign | buildingtype | prop | anim)* "]"
+landmark: KW_LANDMARK STRING_LITERAL "[" (code | _node_properties | title | door | sign | buildingtype | prop)* "]"
+anim_building: KW_ANIM_BUILDING STRING_LITERAL "[" (code | _node_properties | title | door | sign | buildingtype | prop | anim)* "]"
 title: KW_TITLE "[" STRING_LITERAL "]"
 buildingtype: KW_BUILDINGTYPE "[" STRING_LITERAL "]"
-door: KW_DOOR "[" (code | node_properties)+ "]"
-sign: KW_SIGN "[" (code | node_properties | baseline)* "]"
-baseline: KW_BASELINE "[" (code | node_properties | width | height | text | graphic | flags | wiggle | stumble | kern | stomp)* "]"
+door: KW_DOOR "[" (code | _node_properties)+ "]"
+sign: KW_SIGN "[" (code | _node_properties | baseline)* "]"
+baseline: KW_BASELINE "[" (code | _node_properties | width | height | text | graphic | flags | wiggle | stumble | kern | stomp)* "]"
 graphic: KW_GRAPHIC "[" code "]"
 flags: KW_FLAGS "[" STRING_LITERAL "]"
-text: KW_TEXT "[" letters "]"
-letters: KW_LETTERS char
+text: KW_TEXT "[" _letters "]"
+_letters: KW_LETTERS char
 
-flatbuilding: KW_FLATBUILDING STRING_LITERAL "[" (node_properties | width | height | wall | prop)* "]"
+flatbuilding: KW_FLATBUILDING STRING_LITERAL "[" (_node_properties | width | height | wall | prop)* "]"
 wall: KW_WALL "[" (code | height | color | windows | cornice | flat_door)* "]"
 cornice: KW_CORNICE "[" (code | color)+ "]"
 windows: KW_WINDOWS "[" (code | color | count)*"]"
 flat_door: KW_FLATDOOR "[" code color? "]"
 
 
-anim_prop: KW_ANIM_PROP STRING_LITERAL "[" (code | node_properties | anim)* "]"
-interactive_prop: KW_INTERACTIVE_PROP STRING_LITERAL "[" (node_properties | code | anim | cell_id)* "]"
+anim_prop: KW_ANIM_PROP STRING_LITERAL "[" (code | _node_properties | anim)* "]"
+interactive_prop: KW_INTERACTIVE_PROP STRING_LITERAL "[" (_node_properties | code | anim | cell_id)* "]"
 cell_id: KW_CELL_ID "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "]"
-prop: KW_PROP STRING_LITERAL "[" (code | node_properties | sign)+ "]"
+prop: KW_PROP STRING_LITERAL "[" (code | _node_properties | sign)+ "]"
 
 
 battle_cell: KW_BATTLE_CELL "[" UNSIGNED_INT_LITERAL UNSIGNED_INT_LITERAL (FLOAT_LITERAL | INT_LITERAL)~3 "]"
@@ -38,26 +38,26 @@ store_suit_point: KW_STORESUITPOINT "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) ",
 
 anim: KW_ANIM "[" STRING_LITERAL "]"
 code: KW_CODE "[" STRING_LITERAL "]"
-node_properties: pos | nhpr | hpr | scale | color
+_node_properties: pos | nhpr | hpr | scale | color
 
 hpr: KW_HPR vec3
 pos: KW_POS vec3
 nhpr: KW_NHPR vec3
 scale: KW_SCALE vec3
 color: KW_COLOR vec4
-kern: KW_KERN vec1
-stomp: KW_STOMP vec1
-stumble: KW_STUMBLE vec1
-wiggle: KW_WIGGLE vec1
-width: KW_WIDTH vec1
-height: KW_HEIGHT vec1
+kern: KW_KERN _vec1
+stomp: KW_STOMP _vec1
+stumble: KW_STUMBLE _vec1
+wiggle: KW_WIGGLE _vec1
+width: KW_WIDTH _vec1
+height: KW_HEIGHT _vec1
 
 
 texture: KW_TEXTURE "[" STRING_LITERAL "]"
 count: KW_COUNT "[" (UNSIGNED_INT_LITERAL | ZERO_LITERAL) "]"
 
 char: "[" "\"" STRING_CHARACTER "\"" "]"
-vec1: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) "]"
+_vec1: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) "]"
 vec3: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) ~ 3 "]"
 vec4: "[" (FLOAT_LITERAL | INT_LITERAL | HEX_LITERAL) ~ 4 "]"
 
