@@ -9,7 +9,7 @@ from .objects import *
 from collections import deque
 
 
-from typing import List, Dict
+from typing import List, Dict, Union
 from weakref import WeakValueDictionary
 
 
@@ -30,6 +30,126 @@ class DNAStorage:
         self.block_zones: Dict[int, int] = dict()
         self.block_building_types: Dict[int, str] = dict()
         self.block_doors: Dict[int, str] = dict()
+
+    def get_suit_edge(self, start_index: int, end_index: int) -> Union[None, DNASuitEdge]:
+        if start_index not in self.suit_edges:
+            return None
+
+        for edge in self.suit_edges[start_index]:
+            if edge.end == end_index:
+                return edge
+
+        return None
+
+    def get_suit_edge_travel_time(self, start_index: int, end_index: int, walk_speed: float) -> float:
+        edge = self.get_suit_edge(start_index, end_index)
+
+        start = self.suit_points[edge.start]
+        end = self.suit_points[edge.end]
+
+        return (start.pos - end.pos).length() / walk_speed
+
+    def get_suit_edge_zone(self, start_index: int, end_index: int) -> Union[int, None]:
+        edge = self.get_suit_edge(start_index, end_index)
+        return edge.zone_id if edge else None
+
+    def get_adjacent_points(self, start_index: int) -> List[int]:
+        if start_index not in self.suit_edges:
+            return []
+
+        return [edge.end for edge in self.suit_edges[start_index]]
+
+    def discover_continuity(self) -> int:
+        graph_id = 0
+
+        for suit_point in self.suit_points:
+            if not suit_point.graph_id:
+                graph_id += 1
+                self.discover_connections(suit_point, graph_id)
+
+        return graph_id
+
+    def discover_connections(self, suit_point: DNASuitPoint, graph_id: int):
+        if suit_point.graph_id:
+            if suit_point.graph_id != graph_id:
+                print('DNAStorage: %s is connected to the graph only one-way.' % suit_point)
+        else:
+            suit_point.graph_id = graph_id
+            for edge in self.suit_edges[suit_point.index]:
+                self.discover_connections(self.suit_points[edge.end], graph_id)
+
+    def get_suit_path(self, start_point: DNASuitPoint, end_point: DNASuitPoint, min_length: int, max_length: int) -> List[int]:
+        if start_point.graph_id != end_point.graph_id:
+            return []
+
+        path = []
+        return self.get_suit_path_breadth_first(path, start_point, end_point, min_length, max_length)
+
+    def get_suit_path_breadth_first(self, path, start_point, end_point, min_length, max_length) -> List[int]:
+        path.append(start_point.index)
+
+        path_size = 1
+        if min_length - 1 > 1:
+            v10 = min_length - 2
+            path_size = min_length - 1
+            while True:
+                self.generate_next_suit_path_chain(path)
+                v10 -= 1
+                if not v10:
+                    break
+
+        if path_size < max_length:
+            while True:
+                path_size += 1
+                if self.consider_next_suit_path_chain(path, end_point):
+                    return path
+                if path_size > max_length:
+                    break
+
+        return path
+
+    def generate_next_suit_path_chain(self, path: List[int]):
+        start_index = path[-1]
+
+        for edge in self.suit_edges[start_index]:
+            end_point = self.suit_points[edge.end]
+            if edge.end == start_index:
+                continue
+
+            if edge.end in path:
+                continue
+
+            if end_point.point_type == SuitPointType.FRONT_DOOR_POINT:
+                continue
+
+            if end_point.point_type == SuitPointType.SIDE_DOOR_POINT:
+                continue
+
+            path.append(edge.end)
+            return
+
+    def consider_next_suit_path_chain(self, path: List[int], end_point: DNASuitPoint):
+        start_index = path[-1]
+
+        for edge in self.suit_edges[start_index]:
+            if edge.end == start_index:
+                continue
+
+            if edge.end in path:
+                continue
+
+            if edge.end == end_point.index:
+                path.append(edge.end)
+                return True
+
+            if end_point.point_type == SuitPointType.FRONT_DOOR_POINT:
+                continue
+
+            if end_point.point_type == SuitPointType.SIDE_DOOR_POINT:
+                continue
+
+            path.append(edge.end)
+            return False
 
 
 # TODO: make AI specific Transformer with discarded nodes for load speed up
