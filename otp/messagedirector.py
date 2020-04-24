@@ -95,6 +95,9 @@ class MessageDirector(Service):
             if participant in self.channel_subscriptions[channel]:
                 self.channel_subscriptions[channel].remove(participant)
 
+            if len(self.channel_subscriptions[channel]) == 0:
+                del self.channel_subscriptions[channel]
+
     def unsubscribe_all(self, participant: MDParticipant):
         while participant.channels:
             channel = participant.channels.pop()
