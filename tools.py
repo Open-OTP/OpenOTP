@@ -111,9 +111,9 @@ def sign_prc(in_path, out_path, key_path):
         key = RSA.import_key(kf.read())
 
     with open(in_path, 'rb') as in_cfg:
-        data = in_cfg.read()
+        data = b''.join([line for line in in_cfg if not line.startswith(b'#')])
 
-    if not data[-1] == b'\n':
+    if not data[-1] == ord('\n'):
         data += b'\n'
 
     data += b'##!\n'
