@@ -95,9 +95,6 @@ class MessageDirector(Service):
             if participant in self.channel_subscriptions[channel]:
                 self.channel_subscriptions[channel].remove(participant)
 
-            if len(self.channel_subscriptions[channel]) == 0:
-                del self.channel_subscriptions[channel]
-
     def unsubscribe_all(self, participant: MDParticipant):
         while participant.channels:
             channel = participant.channels.pop()
@@ -200,7 +197,7 @@ class DownstreamMessageDirector(MessageDirector, DownstreamClient):
         raise NotImplementedError
 
     def subscribe_channel(self, participant, channel):
-        subscribe_upstream = channel not in self.channel_subscriptions
+        subscribe_upstream = channel not in self.channel_subscriptions or not len(self.channel_subscriptions[channel])
         MessageDirector.subscribe_channel(self, participant, channel)
 
         if subscribe_upstream:
