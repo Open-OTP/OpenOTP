@@ -997,7 +997,7 @@ dclass DistributedToon : DistributedPlayer {
   setCustomMessages(uint16array) required ownrecv db;
   setSleepAutoReply(uint32) broadcast clsend ownrecv;
   setResistanceMessages(pair16 []) required ownrecv db;
-  setPetTrickPhrases(uint8[]) required ownrecv db;
+  setPetTrickPhrases(uint8array) required ownrecv db;
   setCatalogSchedule(uint16, uint32) required ownrecv db;
   setCatalog(blob, blob, blob) required ownrecv db;
   setMailboxContents(blob) required ownrecv db;
@@ -1122,10 +1122,14 @@ dclass DistributedToon : DistributedPlayer {
   setPartyCanStart(uint64) ownrecv airecv;
   setPartyStatus(uint64, uint8) ownrecv airecv;
   announcePartyStarted(uint64) ownrecv;
+  setNeverStartedPartyRefunded(uint64, int8, uint16) ownrecv;
   setModuleInfo(string []) airecv clsend;
   setDISLname(string) ram;
   setDISLid(uint32) ram db airecv;
   flagAv(uint32, uint16, string []) airecv ownsend;
+  requestPing(uint32) airecv ownsend;
+  ping(char [0-1024]);
+  pingresp(char [0-1024]) airecv ownsend;
 };
 
 dclass DistributedCCharBase : DistributedObject {
@@ -3114,6 +3118,7 @@ dclass DistributedDeliveryManager : DistributedObject {
   giveBeanBonus(uint32, uint16);
   requestAck() clsend;
   returnAck();
+  givePartyRefund(uint32, uint32, uint64, int8, uint16);
 };
 
 dclass DistributedLawbotBoss : DistributedBossCog {
@@ -3680,6 +3685,7 @@ dclass DistributedPartyManager : DistributedObject {
   partyInfoOfHostRequestAiToUd(uint32, uint32);
   partyInfoOfHostFailedResponseUdToAi(uint32) airecv;
   partyInfoOfHostResponseUdToAi(party, uint32array) airecv;
+  givePartyRefundResponse(uint32, uint64, int8, uint16, uint32);
   getPartyZone(uint32, uint32, uint8) clsend airecv;
   receivePartyZone(uint32, uint64, uint32);
   freeZoneIdFromPlannedParty(uint32, uint32) clsend airecv;
