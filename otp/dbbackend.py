@@ -30,15 +30,14 @@ class DatabaseBackend:
         raise NotImplementedError
 
 
-
 class SQLBackend(DatabaseBackend):
     def __init__(self, service):
         DatabaseBackend.__init__(self, service)
         self.pool = None
 
     async def setup(self):
-        self.pool = await aiomysql.create_pool(host='127.0.0.1', port=3306, user='toontown', password='7i8k!aQ6PFj1',
-                                               loop=self.service.loop, db='otp', maxsize=5)
+        self.pool = await aiomysql.create_pool(host=config['SQL.HOST'], port=config['SQL.PORT'], user=config['SQL.USER'],
+                                               password=config['SQL.PASSWORD'], loop=self.service.loop, db='otp', maxsize=5)
         conn = await self.pool.acquire()
         cursor = await conn.cursor()
 
@@ -68,10 +67,6 @@ class SQLBackend(DatabaseBackend):
         await cursor.close()
         conn.close()
         self.pool.release(conn)
-
-
-    # def get_datetime_now(self):
-    #     return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     async def _query_dclass(self, conn: aiomysql.Connection, do_id: int) -> str:
         cursor = await conn.cursor()
