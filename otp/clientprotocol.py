@@ -143,16 +143,19 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         ToontownProtocol.connection_lost(self, exc)
 
         if self.avatar_id:
-            dg = Datagram()
-            dg.add_server_header([self.avatar_id], self.channel, STATESERVER_OBJECT_DELETE_RAM)
-            dg.add_uint32(self.avatar_id)
-            self.service.send_datagram(dg)
+            self.delete_avatar_ram()
 
         self.service.remove_participant(self)
 
     def connection_made(self, transport):
         ToontownProtocol.connection_made(self, transport)
         self.subscribe_channel(CLIENTS_CHANNEL)
+
+    def delete_avatar_ram(self):
+        dg = Datagram()
+        dg.add_server_header([self.avatar_id], self.channel, STATESERVER_OBJECT_DELETE_RAM)
+        dg.add_uint32(self.avatar_id)
+        self.service.send_datagram(dg)
 
     def receive_datagram(self, dg):
         dgi = dg.iterator()
@@ -227,6 +230,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 self.receive_client_location(dgi)
             elif msgtype == CLIENT_OBJECT_UPDATE_FIELD:
                 self.receive_update_field(dgi)
+            elif msgtype == CLIENT_SET_AVATAR:
+                self.receive_set_avatar(dgi)
             else:
                 self.service.log.debug(f'Unhandled msg type {msgtype} in state {self.state}')
 
@@ -303,9 +308,20 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.service.log.debug(f'client {self.channel} is setting their avatar to {av_id}')
 
         if not av_id:
-            return
-
-        if self.avatar_id:
+            if self.avatar_id:
+                self.delete_avatar_ram()
+                self.owned_objects.clear()
+                self.visible_objects.clear()
+                self.unsubscribe_channel(self.account.disl_id << 32 | self.avatar_id)
+                self.channel = self.account.disl_id << 32
+                self.subscribe_channel(self.channel)
+                self.state = ClientState.AUTHENTICATED
+                return
+            else:
+                # Do nothing.
+                return
+        elif self.state == ClientState.PLAY_GAME:
+            self.service.log.debug(f'Client {self.channel} tried to set their avatar {av_id} while avatar is already set to {self.avatar_id}.')
             return
 
         pot_av = None
@@ -579,7 +595,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.send_datagram(resp)
 
-
     def receive_remove_interest(self, dgi):
         handle = dgi.get_uint16()
 
@@ -591,7 +606,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         interest = None
 
         for _interest in self.interests:
-            if _interest.handle == handle and _interest.context == context:
+            if _interest.handle == handle:
                 interest = _interest
                 break
 
@@ -599,6 +614,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.service.log.debug(f'Got unexpected interest removal from client {self.channel} for interest handle '
                                    f'{handle} with context {context}')
             return
+
+        self.service.log.debug(f'Got remove interest request from client {self.channel} for interest handle '
+                               f'{handle} with context {context}')
 
         parent_id = interest.parent_id
 
@@ -623,6 +641,14 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         for zone in uninterested_zones:
             # print('unSUBSCRIBING FROM ', parent_id, zone, location_as_channel(parent_id, zone))
             self.unsubscribe_channel(location_as_channel(parent_id, zone))
+
+        self.interests.remove(interest)
+
+        resp = Datagram()
+        resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
+        resp.add_uint16(handle)
+        resp.add_uint32(context)
+        self.send_datagram(resp)
 
     def receive_get_avatars(self, dgi):
         query = Datagram()
@@ -757,8 +783,44 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.service.log.debug(f'Client {self.channel} requested unexpected interest in state {self.state}. Ignoring.')
             return
 
-        interest = Interest(self.channel, handle, context_id, parent_id, zones)
-        self.interests.append(interest)
+        previous_interest = None
+
+        for _interest in self.interests:
+            if _interest.handle == handle:
+                previous_interest = _interest
+                break
+
+        if previous_interest is None:
+            interest = Interest(self.channel, handle, context_id, parent_id, zones)
+            self.interests.append(interest)
+        else:
+            self.interests.remove(previous_interest)
+
+            if previous_interest.parent_id != parent_id:
+                killed_zones = previous_interest.zones
+            else:
+                killed_zones = set(previous_interest.zones).difference(set(zones))
+
+            for do_id in list(self.visible_objects.keys()):
+                obj = self.visible_objects[do_id]
+                if obj.parent_id == parent_id and obj.zone_id in killed_zones:
+                    self.send_remove_object(obj.do_id)
+                    del self.visible_objects[do_id]
+
+            for zone in killed_zones:
+                self.unsubscribe_channel(location_as_channel(previous_interest.parent_id, zone))
+
+            interest = Interest(self.channel, handle, context_id, parent_id, zones)
+            self.interests.append(interest)
+
+        if not zones:
+            interest.done = True
+            resp = Datagram()
+            resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
+            resp.add_uint16(handle)
+            resp.add_uint32(context_id)
+            self.send_datagram(resp)
+            return
 
         query_request = Datagram()
         query_request.add_server_header([parent_id], self.channel, STATESERVER_QUERY_ZONE_OBJECT_ALL)
@@ -768,7 +830,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         for zone in zones:
             query_request.add_uint32(zone)
-            # print('SUBSCRIBING TO ', parent_id, zone, location_as_channel(parent_id, zone))
             self.subscribe_channel(location_as_channel(parent_id, zone))
 
         self.service.send_datagram(query_request)

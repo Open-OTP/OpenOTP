@@ -58,7 +58,6 @@ class DistributedObject(MDParticipant):
                 continue
 
             if not client_only or field.is_broadcast or 'clrecv' in field.keywords or (also_owner and field.is_ownrecv):
-                self.service.log.debug(f'Packing field {field.name} for {self.do_id}')
                 dg.add_bytes(self.required[field.name])
 
     def append_other_data(self, dg, client_only, also_owner):
@@ -336,8 +335,6 @@ class DistributedObject(MDParticipant):
         other = dgi.get_uint8()
         context = dgi.get_uint32()
 
-        print('got query all', other, context)
-
         resp = Datagram()
         resp.add_server_header([sender], self.do_id, STATESERVER_QUERY_OBJECT_ALL_RESP)
         resp.add_uint32(self.do_id)
@@ -350,7 +347,7 @@ class DistributedObject(MDParticipant):
         handle = dgi.get_uint16()
         context_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
-        print('HANDLE_QUERY', handle, context_id, parent_id, self.do_id)
+        self.service.log.debug(f'Query requested with handle {handle} context {context_id} w/ parent {parent_id} to object {self.do_id} from {sender}.')
 
         if parent_id != self.do_id:
             return
@@ -474,12 +471,10 @@ class StateServerProtocol(MDUpstreamProtocol):
         ram = {}
 
         count = dgi.get_uint16()
-        self.service.log.debug(f'Unpacking {count} fields for activate. do_id: {do_id}')
 
         for i in range(count):
             field_number = dgi.get_uint16()
             field = state_server.dc_file.fields[field_number]()
-            self.service.log.debug(f'Unpacking {field.name}...')
 
             if field.is_required:
                 required[field.name] = field.unpack_bytes(dgi)

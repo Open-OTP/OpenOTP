@@ -4,7 +4,7 @@ import asyncio
 from dc.parser import parse_dc_file
 from dc.util import Datagram
 
-from otp.messagedirector import DownstreamMessageDirector, MDParticipant, MDUpstreamProtocol, UpstreamServer
+from otp.messagedirector import DownstreamMessageDirector, MDUpstreamProtocol, UpstreamServer
 from otp.networking import ChannelAllocator
 from .clientprotocol import ClientProtocol
 
@@ -75,9 +75,6 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
         self._context = (self._context + 1) & 0xFFFFFFFF
         return self._context
 
-    def process_datagram(self, participant: MDParticipant, dg: Datagram):
-        DownstreamMessageDirector.process_datagram(self, participant, dg)
-
 
 async def main():
     loop = asyncio.get_running_loop()
@@ -86,9 +83,6 @@ async def main():
 
 
 if __name__ == '__main__':
-    #import ssl
-    #ClientAgent.SSL_CONTEXT = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-    #ClientAgent.SSL_CONTEXT.load_cert_chain('server.crt', keyfile='server.key')
     asyncio.run(main(), debug=True)
 
 #Shared ciphers:EDH-RSA-DES-CBC3-SHA:EDH-DSS-DES-CBC3-SHA:DES-CBC3-SHA:IDEA-CBC-SHA:RC4-SHA:RC4-MD5
