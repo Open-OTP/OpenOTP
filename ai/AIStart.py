@@ -18,6 +18,7 @@ import time
 
 
 from .DistributedObjectAI import DistributedObjectAI
+from .TimeManagerAI import TimeManagerAI
 
 directNotify = DirectNotify.DirectNotify()
 
@@ -389,6 +390,9 @@ class AIRepository:
         dg.add_uint32(stats.do_id)
         dg.add_channel(self.our_channel)
         self.send(dg)
+
+        time_mgr = TimeManagerAI(self)
+        self.generate_with_required(time_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
 
         ingame_news = DistributedInGameNewsMgrAI(self)
         self.generate_with_required(ingame_news, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
