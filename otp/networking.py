@@ -4,6 +4,14 @@ import logging
 import traceback
 
 
+import asyncio
+import struct
+
+
+from asyncio import Future
+from typing import List
+
+
 class Service:
     def __init__(self):
         self.log = logging.getLogger(self.__class__.__name__)
@@ -76,22 +84,12 @@ class DownstreamClient:
         return self._client
 
 
-import asyncio
-import struct
-
-
-from asyncio import Future
-
-
 class DatagramFuture(Future):
     def __init__(self, loop, msg_id, sender=None):
         Future.__init__(self, loop=loop)
 
         self.future_msg_id = msg_id
         self.future_sender = sender
-
-
-from typing import List
 
 
 class ToontownProtocol(asyncio.Protocol):
@@ -107,14 +105,12 @@ class ToontownProtocol(asyncio.Protocol):
         self.futures: List[DatagramFuture] = []
 
     def connection_made(self, transport):
-        name = transport.get_extra_info('peername')
+        # name = transport.get_extra_info('peername')
         self.transport = transport
-        print(self.__class__, 'connection_made', name,)
         self.tasks.append(self.service.loop.create_task(self.handle_datagrams()))
         self.tasks.append(self.service.loop.create_task(self.transport_datagrams()))
 
     def connection_lost(self, exc):
-        print('lost conc')
         for task in self.tasks:
             task.cancel()
 

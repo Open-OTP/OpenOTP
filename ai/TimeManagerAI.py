@@ -1,6 +1,5 @@
 import time
 
-from direct.directnotify import DirectNotifyGlobal
 from direct.distributed.ClockDelta import globalClockDelta
 
 from .DistributedObjectAI import DistributedObjectAI
@@ -8,37 +7,35 @@ from . import OTPGlobals
 
 
 class TimeManagerAI(DistributedObjectAI):
-    notify = DirectNotifyGlobal.directNotify.newCategory('TimeManagerAI')
-
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
-        self.avId2disconnectcode = {}
-        self.avId2exceptioninfo = {}
+        self.disconnect_codes = {}
+        self.exception_info = {}
 
     def requestServerTime(self, context):
-        avId = self.air.getAvatarIdFromSender()
+        avId = self.air.current_av_sender
         if not avId:
             return
 
-        self.sendUpdateToAvatarId(avId, 'serverTime',
-                                  [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
+        self.send_update_to_channel(avId, 'serverTime',
+                                    [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
 
     def setDisconnectReason(self, disconnectCode):
-        avId = self.air.getAvatarIdFromSender()
+        avId = self.air.current_av_sender
         if not avId:
             return
 
-        self.avId2disconnectcode[avId] = disconnectCode
-        self.air.writeServerEvent('disconnect-reason', avId=avId,
-                                  reason=OTPGlobals.DisconnectReasons.get(disconnectCode, 'unknown'))
+        self.disconnect_codes[avId] = disconnectCode
+        # self.air.writeServerEvent('disconnect-reason', avId=avId,
+        #                           reason=OTPGlobals.DisconnectReasons.get(disconnectCode, 'unknown'))
 
     def setExceptionInfo(self, info):
-        avId = self.air.getAvatarIdFromSender()
+        avId = self.air.current_av_sender
         if not avId:
             return
 
-        self.avId2exceptioninfo[avId] = info
-        self.air.writeServerEvent('client-exception', avId=avId, info=info)
+        self.exception_info[avId] = info
+        # self.air.writeServerEvent('client-exception', avId=avId, info=info)
 
     def setSignature(self, signature, fileHash, pyc):
         pass  # TODO

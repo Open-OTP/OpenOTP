@@ -294,7 +294,6 @@ class DistributedObject(MDParticipant):
         elif msgtype == STATESERVER_OBJECT_SET_ZONE:
             new_parent = dgi.get_uint32()
             new_zone = dgi.get_uint32()
-            print('GOT SET ZONE', self.do_id, new_parent, new_zone)
             self.handle_location_change(new_parent, new_zone, sender)
         elif msgtype == STATESERVER_OBJECT_CHANGE_ZONE:
             child_id = dgi.get_uint32()

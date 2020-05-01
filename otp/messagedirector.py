@@ -223,7 +223,6 @@ class DownstreamMessageDirector(MessageDirector, DownstreamClient):
 async def main():
     loop = asyncio.get_running_loop()
     service = MasterMessageDirector(loop)
-    print('awaiting message director run..')
     await service.run()
 
 if __name__ == '__main__':

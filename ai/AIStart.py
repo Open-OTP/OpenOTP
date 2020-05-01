@@ -40,7 +40,7 @@ class DistributedDirectoryAI(DistributedObjectAI):
 class ToontownDistrictAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
-        self.name = 'Coontown'
+        self.name = 'ToonTown'
         self.available = True
         self.ahnnLog = False
 
@@ -159,18 +159,15 @@ from otp.networking import ToontownProtocol
 
 class AIProtocol(ToontownProtocol):
     def connection_made(self, transport):
-        print('connection made')
         ToontownProtocol.connection_made(self, transport)
 
     def connection_lost(self, exc):
         raise Exception('AI CONNECTION LOST', exc)
 
     async def receive_datagram(self, dg):
-        print('ai protocol got dg:')
         self.service.queue.put_nowait(dg)
 
     def data_received(self, data: bytes):
-        print('got data...')
         ToontownProtocol.data_received(self, data)
 
     def send_datagram(self, data: Datagram):
@@ -180,7 +177,6 @@ class AIProtocol(ToontownProtocol):
     async def handle_datagrams(self):
         while True:
             data: bytes = await self.incoming_q.get()
-            print('got datagram!!!!', self.service)
             dg = Datagram()
             dg.add_bytes(data)
             await self.receive_datagram(dg)
@@ -189,6 +185,8 @@ class AIProtocol(ToontownProtocol):
 from panda3d.core import UniqueIdAllocator
 from dc.parser import parse_dc_file
 import queue
+
+from typing import Dict
 
 
 class AIRepository:
@@ -208,7 +206,9 @@ class AIRepository:
 
         self.our_channel = self.allocate_channel()
 
-        self.do_table = {}
+        self.do_table: Dict[int, DistributedObjectAI] = {}
+        self.zone_table: Dict[int, set] = {}
+        self.parent_table: Dict[int, set] = {}
 
         self.dc_file = parse_dc_file('toon.dc')
 
@@ -251,14 +251,11 @@ class AIRepository:
 
     def handle_datagram(self, dg):
         dgi = dg.iterator()
-        print('handle_datagram', dg.get_message())
 
         recipient_count = dgi.get_uint8()
         recipients = [dgi.get_channel() for _ in range(recipient_count)]
         self.current_sender = dgi.get_channel()
         msg_type = dgi.get_uint16()
-
-        print(recipients, recipient_count, self.current_sender, msg_type)
 
         if msg_type == STATESERVER_OBJECT_ENTER_AI_RECV:
             if self.current_sender == self.our_channel:
@@ -269,10 +266,10 @@ class AIRepository:
         elif msg_type == STATESERVER_OBJECT_LEAVING_AI_INTEREST:
             pass
         elif msg_type == STATESERVER_OBJECT_CHANGE_ZONE:
-            print('got change zone upoate', dg.get_message())
             self.handle_change_zone(dgi)
         elif msg_type == STATESERVER_OBJECT_UPDATE_FIELD:
-            print('GOT FIELD UPDATE')
+            if self.current_sender == self.our_channel:
+                return
             self.handle_update_field(dgi)
         else:
             print('Unhandled msg type: ', msg_type)
@@ -281,8 +278,35 @@ class AIRepository:
         do_id = dgi.get_uint32()
         new_parent = dgi.get_uint32()
         new_zone = dgi.get_uint32()
+
+        # Should we only change location if the old location matches?
         old_parent = dgi.get_uint32()
         old_zone = dgi.get_uint32()
+
+        self.do_table[do_id].location = (new_parent, new_zone)
+        self.store_location(do_id, old_parent, old_zone, new_parent, new_zone)
+
+    def store_location(self, do_id, old_parent, old_zone, new_parent, new_zone):
+        if not do_id:
+            return
+
+        if old_zone and old_zone in self.zone_table and do_id in self.zone_table[old_zone]:
+            self.zone_table[old_zone].remove(do_id)
+
+        if old_parent and old_parent in self.parent_table and do_id in self.parent_table[old_parent]:
+            self.parent_table[old_parent].remove(do_id)
+
+        if new_zone:
+            if new_zone not in self.zone_table:
+                self.zone_table[new_zone] = set()
+
+            self.zone_table[new_zone].add(do_id)
+
+        if new_parent:
+            if new_parent not in self.parent_table:
+                self.parent_table[new_parent] = set()
+
+            self.parent_table[new_parent].add(do_id)
 
     def handle_update_field(self, dgi):
         do_id = dgi.get_uint32()
@@ -290,34 +314,38 @@ class AIRepository:
 
         field = self.dc_file.fields[field_number]()
 
-        if field.is_airecv and 'clsend' in field.keywords:
-            self.current_sender = self.current_sender & 0xffffffff
+        self.current_sender = self.current_sender
+        do = self.do_table[do_id]
+        field.receive_update(do, dgi)
 
-        print(field.name, do_id, self.current_sender)
+    @property
+    def current_av_sender(self):
+        return self.current_sender & 0xffffffff
 
     def handle_obj_entry(self, dgi):
-        print('pre ai entry', dgi.remaining())
         do_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
         zone_id = dgi.get_uint32()
         dc_id = dgi.get_uint16()
-        print('ai_entry', do_id, parent_id, zone_id, dc_id)
 
         dclass = self.dc_file.classes[dc_id]
+
+        if do_id in self.do_table:
+            return
 
         if dclass.name == 'DistributedToon':
             from .DistributedToon import DistributedToonAI
 
             obj = DistributedToonAI(self)
             obj.do_id = do_id
-            obj.parent_id = parent_id
-            obj.zone_id = zone_id
+            obj.location = (parent_id, zone_id)
             dclass.receive_update_all_required(obj, dgi)
-            # dclass.receive_update_other(obj, dgi)
-
             self.do_table[obj.do_id] = obj
+            self.store_location(do_id, 0, 0, parent_id, zone_id)
 
             obj.send_update('arrivedOnDistrict', [self.district.do_id, ])
+        else:
+            print('unknown object entry: %s' % dclass.name)
 
     def context(self):
         self.__contextCounter = (self.__contextCounter + 1) & 0xFFFFFFFF
@@ -337,7 +365,6 @@ class AIRepository:
         dg = Datagram()
         dg.add_server_control_header(CONTROL_SET_CHANNEL)
         dg.add_channel(channel)
-        print('ai register for channel', channel, dg.get_message().tobytes())
         self.send(dg)
 
     def unregister_for_channel(self, channel):
@@ -359,7 +386,6 @@ class AIRepository:
 
     def generate_with_required_and_id(self, do, do_id, parent_id, zone_id, optional=()):
         do.do_id = do_id
-        #self.addDOToTables(do, location=(parent_id, zone_id))
         self.do_table[do_id] = do
         dg = do.dclass.ai_format_generate(do, do_id, parent_id, zone_id, STATESERVERS_CHANNEL, self.our_channel, optional)
         self.send(dg)
@@ -399,6 +425,9 @@ class AIRepository:
 
         news_mgr = NewsManagerAI(self)
         self.generate_with_required(news_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
+
+        time_mgr = TimeManagerAI(self)
+        self.generate_with_required(time_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
 
 
 def main():
