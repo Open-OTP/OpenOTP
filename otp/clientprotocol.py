@@ -74,6 +74,7 @@ class Interest:
         self.parent_id = parent_id
         self.zones = zones
         self.done = False
+        self.ai = False
 
 
 OTP_DO_ID_TOONTOWN = 4618
@@ -644,11 +645,12 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.interests.remove(interest)
 
-        resp = Datagram()
-        resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
-        resp.add_uint16(handle)
-        resp.add_uint32(context)
-        self.send_datagram(resp)
+        if not interest.ai:
+            resp = Datagram()
+            resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
+            resp.add_uint16(handle)
+            resp.add_uint32(context)
+            self.send_datagram(resp)
 
     def receive_get_avatars(self, dgi):
         query = Datagram()
@@ -764,7 +766,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.send_datagram(resp)
 
-    def receive_add_interest(self, dgi):
+    def receive_add_interest(self, dgi, ai=False):
         handle = dgi.get_uint16()
         context_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
@@ -813,14 +815,17 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             interest = Interest(self.channel, handle, context_id, parent_id, zones)
             self.interests.append(interest)
 
+        interest.ai = ai
+
         if not zones:
             interest.done = True
-            resp = Datagram()
-            resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
-            resp.add_uint16(handle)
-            resp.add_uint32(context_id)
-            self.send_datagram(resp)
-            return
+            if not ai:
+                resp = Datagram()
+                resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
+                resp.add_uint16(handle)
+                resp.add_uint32(context_id)
+                self.send_datagram(resp)
+                return
 
         query_request = Datagram()
         query_request.add_server_header([parent_id], self.channel, STATESERVER_QUERY_ZONE_OBJECT_ALL)
@@ -866,6 +871,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                     self.disconnect(ClientDisconnect.SHARD_DISCONNECT, 'district reset')
             else:
                 self.send_remove_object(do_id)
+        elif msgtype == CLIENT_AGENT_SET_INTEREST:
+            self.receive_add_interest(dgi)
+        elif msgtype == CLIENT_AGENT_REMOVE_INTEREST:
+            self.receive_remove_interest(dgi)
         else:
            self.service.log.debug(f'Client {self.channel} received unhandled upstream msg {msgtype}.')
 
@@ -972,11 +981,12 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest.done = True
 
-        resp = Datagram()
-        resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
-        resp.add_uint16(handle)
-        resp.add_uint32(context)
-        self.send_datagram(resp)
+        if not interest.ai:
+            resp = Datagram()
+            resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
+            resp.add_uint16(handle)
+            resp.add_uint32(context)
+            self.send_datagram(resp)
 
     def lookup_interest(self, parent_id, zone_id):
         return [interest for interest in self.interests if interest.parent_id == parent_id and zone_id in interest.zones]

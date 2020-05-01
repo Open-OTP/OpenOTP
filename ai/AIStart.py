@@ -308,6 +308,37 @@ class AIRepository:
 
             self.parent_table[new_parent].add(do_id)
 
+    def send_location(self, do_id, old_parent: int, old_zone: int, new_parent: int, new_zone: int):
+        dg = Datagram()
+        dg.add_server_header([do_id], self.our_channel, STATESERVER_OBJECT_CHANGE_ZONE)
+        dg.add_uint32(do_id)
+        dg.add_uint32(new_parent)
+        dg.add_uint32(new_zone)
+        dg.add_uint32(old_parent)
+        dg.add_uint32(old_zone)
+        self.send(dg)
+
+    @staticmethod
+    def is_client_channel(channel):
+        return config['ClientAgent.MIN_CHANNEL'] <= channel <= config['ClientAgent.MAX_CHANNEL']
+
+    def set_interest(self, client_channel, handle, context, parent_id, zones):
+        dg = Datagram()
+        dg.add_server_header([client_channel], self.our_channel, CLIENT_AGENT_SET_INTEREST)
+        dg.add_uint16(handle)
+        dg.add_uint32(context)
+        dg.add_uint32(parent_id)
+        for zone in zones:
+            dg.add_uint32(zone)
+        self.send(dg)
+
+    def remove_interest(self, client_channel, handle, context, parent_id, zones):
+        dg = Datagram()
+        dg.add_server_header([client_channel], self.our_channel, CLIENT_AGENT_REMOVE_INTEREST)
+        dg.add_uint16(handle)
+        dg.add_uint32(context)
+        self.send(dg)
+
     def handle_update_field(self, dgi):
         do_id = dgi.get_uint32()
         field_number = dgi.get_uint16()
@@ -321,6 +352,7 @@ class AIRepository:
     @property
     def current_av_sender(self):
         return self.current_sender & 0xffffffff
+
 
     def handle_obj_entry(self, dgi):
         do_id = dgi.get_uint32()
