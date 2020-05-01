@@ -167,22 +167,12 @@ class AIProtocol(ToontownProtocol):
     def connection_lost(self, exc):
         raise Exception('AI CONNECTION LOST', exc)
 
-    async def receive_datagram(self, dg):
+    def receive_datagram(self, dg):
         self.service.queue.put_nowait(dg)
 
-    def data_received(self, data: bytes):
-        ToontownProtocol.data_received(self, data)
-
     def send_datagram(self, data: Datagram):
-        ToontownProtocol.send_datagram(self, data)
-        print('sent data:', data.get_message().tobytes(), self.transport)
-
-    async def handle_datagrams(self):
-        while True:
-            data: bytes = await self.incoming_q.get()
-            dg = Datagram()
-            dg.add_bytes(data)
-            await self.receive_datagram(dg)
+        loop = self.service.loop
+        loop.call_soon_threadsafe(self.outgoing_q.put_nowait, data.get_message().tobytes())
 
 
 from panda3d.core import UniqueIdAllocator
