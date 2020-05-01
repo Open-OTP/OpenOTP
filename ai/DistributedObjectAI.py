@@ -1,3 +1,4 @@
+from otp.util import getPuppetChannel, getAccountChannel
 
 
 class DistributedObjectAI:
@@ -19,6 +20,15 @@ class DistributedObjectAI:
     def send_update_to_channel(self, channel, field_name, args):
         dg = self.dclass.ai_format_update(field_name, self.do_id, channel, self.air.our_channel, args)
         self.air.send(dg)
+
+    def send_update_to_sender(self, field_name, args):
+        self.send_update_to_channel(self.air.current_sender, field_name, args)
+
+    def send_update_to_avatar(self, av_id, field_name, args):
+        self.send_update_to_channel(getPuppetChannel(av_id), field_name, args)
+
+    def send_update_to_account(self, disl_id, field_name, args):
+        self.send_update_to_channel(getAccountChannel(disl_id), field_name, args)
 
     @property
     def location(self):

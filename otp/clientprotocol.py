@@ -16,7 +16,7 @@ from otp.messagetypes import *
 from otp.networking import ToontownProtocol, DatagramFuture
 from otp.zone import *
 from otp.constants import *
-from otp.util import DEFAULT_TOON
+from otp.util import *
 
 
 class NamePart(IntEnum):
@@ -310,13 +310,18 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         if not av_id:
             if self.avatar_id:
+                # Client is logging out of their avatar.
                 self.delete_avatar_ram()
                 self.owned_objects.clear()
                 self.visible_objects.clear()
-                self.unsubscribe_channel(self.account.disl_id << 32 | self.avatar_id)
-                self.channel = self.account.disl_id << 32
+
+                self.unsubscribe_channel(getClientSenderChannel(self.account.disl_id, self.avatar_id))
+                self.unsubscribe_channel(getPuppetChannel(self.avatar_id))
+                self.channel = getClientSenderChannel(self.account.disl_id, 0)
                 self.subscribe_channel(self.channel)
+
                 self.state = ClientState.AUTHENTICATED
+                self.avatar_id = 0
                 return
             else:
                 # Do nothing.
@@ -341,10 +346,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.state = ClientState.SETTING_AVATAR
 
-        account_id = self.account.disl_id
-        sender_channel = account_id << 32 | self.avatar_id
-        self.channel = sender_channel
+        self.channel = getClientSenderChannel(self.account.disl_id, self.avatar_id)
         self.subscribe_channel(self.channel)
+        self.subscribe_channel(getPuppetChannel(self.avatar_id))
 
         dclass = self.service.dc_file.namespace['DistributedToon']
 
@@ -726,9 +730,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
             return
 
-        sender_channel = self.account.disl_id << 32
-        self.channel = sender_channel
+        self.channel = getClientSenderChannel(self.account.disl_id, 0)
         self.subscribe_channel(self.channel)
+        self.subscribe_channel(getAccountChannel(self.account.disl_id))
 
         resp = Datagram()
         resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
