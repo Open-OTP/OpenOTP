@@ -332,13 +332,10 @@ TO_TOON_BUILDING = 2.5
 SUIT_WALK_SPEED = 4.8
 
 
-from .dnaparser import DNAStorage
-
-
 class SuitLegList:
     __slots__ = 'legs'
 
-    def __init__(self, path: List[int], storage: DNAStorage):
+    def __init__(self, path: List[int], storage):
         self.legs: List[SuitLeg] = []
 
         # Create the first suit leg.

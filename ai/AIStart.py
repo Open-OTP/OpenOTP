@@ -32,6 +32,9 @@ OTP_ZONE_ID_ELEMENTS = 5
 
 OTP_DO_ID_TOONTOWN = 4618
 
+from dna.dnaparser import load_dna_file
+from dna.dnaparser import DNAStorage, DNAGroup
+
 
 class DistributedDirectoryAI(DistributedObjectAI):
     do_id = OTP_DO_ID_TOONTOWN
@@ -216,6 +219,9 @@ class AIRepository:
         self.loop = None
         self.net_thread = None
 
+        self.dna_storage: Dict[int, DNAStorage] = {}
+        self.dna_map: Dict[int, DNAGroup] = {}
+
     def run(self):
         from threading import Thread
         self.net_thread = Thread(target=self.__event_loop)
@@ -353,7 +359,6 @@ class AIRepository:
     def current_av_sender(self):
         return self.current_sender & 0xffffffff
 
-
     def handle_obj_entry(self, dgi):
         do_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
@@ -422,6 +427,10 @@ class AIRepository:
         dg = do.dclass.ai_format_generate(do, do_id, parent_id, zone_id, STATESERVERS_CHANNEL, self.our_channel, optional)
         self.send(dg)
 
+        do.location = (parent_id, zone_id)
+        do.generate()
+        do.announce_generate()
+
     def create_objects(self):
         self.register_for_channel(self.our_channel)
 
@@ -461,11 +470,28 @@ class AIRepository:
         time_mgr = TimeManagerAI(self)
         self.generate_with_required(time_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
 
+        self.load_zones()
+
+    def load_zones(self):
+        from ai.hood.HoodDataAI import TTHoodDataAI
+
+        self.hoods = [
+            TTHoodDataAI(self)
+        ]
+
+        for hood in self.hoods:
+            hood.active = True
+
+    def load_dna_file(self, path: str):
+        root, storage = load_dna_file(path)
+        return root, storage
+
 
 def main():
     print('running main')
     import builtins
     builtins.simbase = AIBase()
+    builtins.taskMgr = simbase.taskMgr
     simbase.run()
 
 

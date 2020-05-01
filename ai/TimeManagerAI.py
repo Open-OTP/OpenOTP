@@ -55,4 +55,5 @@ class TimeManagerAI(DistributedObjectAI):
         pass  # TODO
 
     def checkAvOnDistrict(self, context, avId):
-        pass  # TODO
+        sender = self.air.current_av_sender
+        self.send_update_to_channel(sender, 'checkAvOnDistrictResult', [context, avId, 1])
