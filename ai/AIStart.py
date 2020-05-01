@@ -339,6 +339,8 @@ class AIRepository:
         do_id = dgi.get_uint32()
         field_number = dgi.get_uint16()
 
+        # TODO: security check here for client senders.
+
         field = self.dc_file.fields[field_number]()
 
         self.current_sender = self.current_sender
@@ -347,7 +349,7 @@ class AIRepository:
 
     @property
     def current_av_sender(self):
-        return self.current_sender & 0xffffffff
+        return getAvatarIDFromChannel(self.current_sender)
 
     def handle_obj_entry(self, dgi):
         do_id = dgi.get_uint32()

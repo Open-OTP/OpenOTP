@@ -17,8 +17,7 @@ class TimeManagerAI(DistributedObjectAI):
         if not avId:
             return
 
-        self.send_update_to_channel(avId, 'serverTime',
-                                    [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
+        self.send_update_to_avatar(avId, 'serverTime', [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
 
     def setDisconnectReason(self, disconnectCode):
         avId = self.air.current_av_sender
@@ -56,4 +55,4 @@ class TimeManagerAI(DistributedObjectAI):
 
     def checkAvOnDistrict(self, context, avId):
         sender = self.air.current_av_sender
-        self.send_update_to_channel(sender, 'checkAvOnDistrictResult', [context, avId, 1])
+        self.send_update_to_sender('checkAvOnDistrictResult', [context, avId, 1])

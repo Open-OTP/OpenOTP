@@ -88,7 +88,7 @@ class DistributedDoorAI(DistributedObjectAI):
         avId = self.air.current_av_sender
 
         if self.doorLock:
-            self.send_update_to_channel(avId, 'rejectEnter', [self.doorLock])
+            self.send_update_to_avatar(avId, 'rejectEnter', [self.doorLock])
             return
 
         self.handleEnter(avId)
@@ -100,8 +100,7 @@ class DistributedDoorAI(DistributedObjectAI):
 
         self.doorFSM.openDoor()
 
-        self.send_update_to_channel(avId, 'setOtherZoneIdAndDoId',
-                                  [self.otherDoor.zoneId, self.otherDoor.do_id])
+        self.send_update_to_avatar(avId, 'setOtherZoneIdAndDoId', [self.otherDoor.zoneId, self.otherDoor.do_id])
 
     def requestExit(self):
         avId = self.air.current_av_sender
