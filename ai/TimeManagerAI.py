@@ -9,31 +9,31 @@ from . import OTPGlobals
 class TimeManagerAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
-        self.disconnect_codes = {}
-        self.exception_info = {}
+        self.disconnectCodes = {}
+        self.exceptionInfo = {}
 
     def requestServerTime(self, context):
-        avId = self.air.current_av_sender
+        avId = self.air.currentAvatarSender
         if not avId:
             return
 
-        self.send_update_to_avatar(avId, 'serverTime', [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
+        self.sendUpdateToAvatar(avId, 'serverTime', [context, globalClockDelta.getRealNetworkTime(bits=32), int(time.time())])
 
     def setDisconnectReason(self, disconnectCode):
-        avId = self.air.current_av_sender
+        avId = self.air.currentAvatarSender
         if not avId:
             return
 
-        self.disconnect_codes[avId] = disconnectCode
+        self.disconnectCodes[avId] = disconnectCode
         # self.air.writeServerEvent('disconnect-reason', avId=avId,
         #                           reason=OTPGlobals.DisconnectReasons.get(disconnectCode, 'unknown'))
 
     def setExceptionInfo(self, info):
-        avId = self.air.current_av_sender
+        avId = self.air.currentAvatarSender
         if not avId:
             return
 
-        self.exception_info[avId] = info
+        self.exceptionInfo[avId] = info
         # self.air.writeServerEvent('client-exception', avId=avId, info=info)
 
     def setSignature(self, signature, fileHash, pyc):
@@ -54,5 +54,5 @@ class TimeManagerAI(DistributedObjectAI):
         pass  # TODO
 
     def checkAvOnDistrict(self, context, avId):
-        sender = self.air.current_av_sender
-        self.send_update_to_sender('checkAvOnDistrictResult', [context, avId, 1])
+        sender = self.air.currentAvatarSender
+        self.sendUpdateToAvatar(sender, 'checkAvOnDistrictResult', [context, avId, 1])

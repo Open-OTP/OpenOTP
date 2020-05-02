@@ -1,4 +1,4 @@
-from ai.AIStart import DistributedObjectAI
+from ai.DistributedObjectAI import DistributedObjectAI
 
 
 class DistributedAvatarAI(DistributedObjectAI):

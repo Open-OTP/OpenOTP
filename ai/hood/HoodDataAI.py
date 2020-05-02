@@ -45,9 +45,9 @@ class TTHoodDataAI(HoodDataAI):
         self.bldgMgr = None
 
     def create_objects(self):
-        root, storage = self.air.load_dna_file('dna/toontown_central_sz.dna')
-        self.air.dna_storage[self.hood_id] = storage
-        self.air.dna_map[self.hood_id] = root
+        root, storage = self.air.loadDNAFile('dna/toontown_central_sz.dna')
+        self.air.dnaStorage[self.hood_id] = storage
+        self.air.dnaMap[self.hood_id] = root
         self.bldgMgr = BuildingMgrAI.BuildingMgrAI(self.air, self.hood_id)
 
     def cleanup(self):

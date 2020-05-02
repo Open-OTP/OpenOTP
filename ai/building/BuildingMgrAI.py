@@ -40,7 +40,7 @@ class BuildingMgrAI:
         bldg.block = block
         bldg.exteriorZoneId = exterior_zone
         bldg.interiorZoneId = (exterior_zone - exterior_zone % 100) + 500 + block
-        bldg.generate_with_required(self.branch_id)
+        bldg.generateWithRequired(self.branch_id)
         bldg.request('Toon')
         self.buildings[block] = bldg
 
@@ -58,7 +58,7 @@ class BuildingMgrAI:
 
     @property
     def dna_storage(self) -> DNAStorage:
-        return self.air.dna_storage[self.branch_id]
+        return self.air.dnaStorage[self.branch_id]
 
 
 from .DistributedDoorAI import DistributedDoorAI
@@ -105,10 +105,10 @@ class HQBuildingAI:
         door1.zoneId = self.exteriorZone
         insideDoor0.zoneId = self.interiorZone
         insideDoor1.zoneId = self.interiorZone
-        door0.generate_with_required(self.exteriorZone)
-        door1.generate_with_required(self.exteriorZone)
-        insideDoor0.generate_with_required(self.interiorZone)
-        insideDoor1.generate_with_required(self.interiorZone)
+        door0.generateWithRequired(self.exteriorZone)
+        door1.generateWithRequired(self.exteriorZone)
+        insideDoor0.generateWithRequired(self.interiorZone)
+        insideDoor1.generateWithRequired(self.interiorZone)
         self.door0 = door0
         self.door1 = door1
         self.insideDoor0 = insideDoor0
@@ -139,15 +139,15 @@ class GagshopBuildingAI:
         self.interior = DistributedGagshopInteriorAI(self.air, blockNumber, self.interiorZone)
         # self.npcs = NPCToons.createNpcsInZone(self.air, self.interiorZone)
         self.npcs = []
-        self.interior.generate_with_required(self.interiorZone)
+        self.interior.generateWithRequired(self.interiorZone)
         door = DistributedDoorAI(self.air, blockNumber, DoorTypes.EXT_STANDARD)
         insideDoor = DistributedDoorAI(self.air, blockNumber, DoorTypes.INT_STANDARD)
         door.setOtherDoor(insideDoor)
         insideDoor.setOtherDoor(door)
         door.zoneId = self.exteriorZone
         insideDoor.zoneId = self.interiorZone
-        door.generate_with_required(self.exteriorZone)
-        insideDoor.generate_with_required(self.interiorZone)
+        door.generateWithRequired(self.exteriorZone)
+        insideDoor.generateWithRequired(self.interiorZone)
         self.door = door
         self.insideDoor = insideDoor
 

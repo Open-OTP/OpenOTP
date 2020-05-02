@@ -68,9 +68,9 @@ DynamicZonesBegin = 61000
 DynamicZonesEnd = 1 << 20
 
 
-def is_welcome_valley(zone_id):
+def isWelcomeValley(zone_id):
     return zone_id == WelcomeValleyToken or WelcomeValleyBegin <= zone_id < WelcomeValleyEnd
 
 
-def get_hood_id(zone_id):
+def getHoodId(zone_id):
     return zone_id - zone_id % 1000

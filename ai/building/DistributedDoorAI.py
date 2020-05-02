@@ -85,10 +85,10 @@ class DistributedDoorAI(DistributedObjectAI):
         self.exitDoorFSM.task = self.uniqueName('exit-door-task')
 
     def requestEnter(self):
-        avId = self.air.current_av_sender
+        avId = self.air.currentAvatarSender
 
         if self.doorLock:
-            self.send_update_to_avatar(avId, 'rejectEnter', [self.doorLock])
+            self.sendUpdateToAvatar(avId, 'rejectEnter', [self.doorLock])
             return
 
         self.handleEnter(avId)
@@ -96,15 +96,15 @@ class DistributedDoorAI(DistributedObjectAI):
     def handleEnter(self, avId):
         if avId not in self.doorFSM.queue:
             self.doorFSM.queue.append(avId)
-            self.send_update('avatarEnter', [avId])
+            self.sendUpdate('avatarEnter', [avId])
 
         self.doorFSM.openDoor()
 
-        self.send_update_to_avatar(avId, 'setOtherZoneIdAndDoId', [self.otherDoor.zoneId, self.otherDoor.do_id])
+        self.sendUpdateToAvatar(avId, 'setOtherZoneIdAndDoId', [self.otherDoor.zoneId, self.otherDoor.do_id])
 
     def requestExit(self):
-        avId = self.air.current_av_sender
-        self.send_update('avatarExit', [avId])
+        avId = self.air.currentAvatarSender
+        self.sendUpdate('avatarExit', [avId])
 
         self.handleExit(avId)
 
@@ -135,7 +135,7 @@ class DistributedDoorAI(DistributedObjectAI):
     def d_suitEnter(self, suitId):
         if suitId not in self.doorFSM.queue:
             self.doorFSM.queue.append(suitId)
-            self.send_update('suitEnter', [suitId])
+            self.sendUpdate('suitEnter', [suitId])
 
         self.doorFSM.openDoor()
 

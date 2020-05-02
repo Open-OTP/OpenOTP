@@ -4,6 +4,8 @@ from ai.DistributedObjectAI import DistributedObjectAI
 from direct.distributed.ClockDelta import globalClockDelta
 from direct.fsm.FSM import FSM
 
+import pickle
+
 
 class DistributedToonInteriorAI(DistributedObjectAI, FSM):
     defaultTransitions = {
@@ -32,10 +34,10 @@ class DistributedToonInteriorAI(DistributedObjectAI, FSM):
         DistributedObjectAI.delete(self)
 
     def getZoneIdAndBlock(self):
-        return [self.zone_id, self.block]
+        return [self.zoneId, self.block]
 
     def getToonData(self):
-        return ''  # cPickle.dumps(self.building.savedBy)
+        return pickle.dumps({}, protocol=2)
 
     def getState(self):
         state = self.state[0].lower() + self.state[1:]
@@ -43,7 +45,7 @@ class DistributedToonInteriorAI(DistributedObjectAI, FSM):
 
     def d_setState(self, state):
         state = self.state[0].lower() + self.state[1:]
-        self.send_update('setState', [state, globalClockDelta.getRealNetworkTime()])
+        self.sendUpdate('setState', [state, globalClockDelta.getRealNetworkTime()])
 
     def b_setState(self, state):
         self.request(state)

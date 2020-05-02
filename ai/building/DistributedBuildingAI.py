@@ -44,7 +44,7 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
 
     def d_setState(self, state):
         state = state[0].lower() + state[1:]
-        self.send_update('setState', [state, globalClockDelta.getRealNetworkTime()])
+        self.sendUpdate('setState', [state, globalClockDelta.getRealNetworkTime()])
 
     def getState(self):
         state = self.state[0].lower() + self.state[1:]
@@ -60,7 +60,7 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
         self.interior = DistributedToonInteriorAI(self.air)
         self.interior.block = self.block
         self.interior.zoneId = self.interiorZoneId
-        self.interior.generate_with_required(self.interiorZoneId)
+        self.interior.generateWithRequired(self.interiorZoneId)
 
         door = DistributedDoorAI(self.air, self.block, DoorTypes.EXT_STANDARD)
         insideDoor = DistributedDoorAI(self.air, self.block, DoorTypes.INT_STANDARD)
@@ -68,8 +68,8 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
         insideDoor.setOtherDoor(door)
         door.zoneId = self.exteriorZoneId
         insideDoor.zoneId = self.interiorZoneId
-        door.generate_with_required(self.exteriorZoneId)
-        insideDoor.generate_with_required(self.interiorZoneId)
+        door.generateWithRequired(self.exteriorZoneId)
+        insideDoor.generateWithRequired(self.interiorZoneId)
         self.door = door
         self.insideDoor = insideDoor
 
