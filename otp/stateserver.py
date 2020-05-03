@@ -567,7 +567,9 @@ class StateServerProtocol(MDUpstreamProtocol):
         ai_channel = dgi.get_channel()
 
         for object_id in list(self.service.objects.keys()):
-            self.service.objects[object_id].annihilate(ai_channel)
+            obj = self.service.objects[object_id]
+            if obj.ai_channel == ai_channel:
+                obj.annihilate(ai_channel)
 
 
 from dc.parser import parse_dc_file
