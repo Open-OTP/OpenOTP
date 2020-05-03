@@ -614,7 +614,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.send_datagram(resp)
 
-    def receive_remove_interest(self, dgi):
+    def receive_remove_interest(self, dgi, ai=False):
         handle = dgi.get_uint16()
 
         if dgi.remaining():
@@ -663,7 +663,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.interests.remove(interest)
 
-        if not interest.ai:
+        if not ai:
             resp = Datagram()
             resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
             resp.add_uint16(handle)
@@ -890,9 +890,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             else:
                 self.send_remove_object(do_id)
         elif msgtype == CLIENT_AGENT_SET_INTEREST:
-            self.receive_add_interest(dgi)
+            self.receive_add_interest(dgi, ai=True)
         elif msgtype == CLIENT_AGENT_REMOVE_INTEREST:
-            self.receive_remove_interest(dgi)
+            self.receive_remove_interest(dgi, ai=True)
         else:
            self.service.log.debug(f'Client {self.channel} received unhandled upstream msg {msgtype}.')
 

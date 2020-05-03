@@ -8,13 +8,11 @@ from panda3d.core import UniqueIdAllocator
 from dc.parser import parse_dc_file
 import queue
 
-from typing import Dict
+from typing import Dict, Tuple
 
 from otp.networking import ToontownProtocol
 
-
-from dna.dnaparser import load_dna_file
-from dna.dnaparser import DNAStorage, DNAGroup
+from dna.objects import DNAVisGroup
 
 import asyncio
 
@@ -65,6 +63,8 @@ class AIRepository:
         self.hoods = None
 
         self.zoneDataStore = AIZoneData.AIZoneDataStore()
+
+        self.vismap: Dict[int, Tuple[int]] = {}
 
     def run(self):
         from threading import Thread
@@ -194,7 +194,7 @@ class AIRepository:
             dg.add_uint32(zone)
         self.send(dg)
 
-    def removeInterest(self, client_channel, handle, context, parent_id, zones):
+    def removeInterest(self, client_channel, handle, context):
         dg = Datagram()
         dg.add_server_header([client_channel], self.ourChannel, CLIENT_AGENT_REMOVE_INTEREST)
         dg.add_uint16(handle)
@@ -348,6 +348,8 @@ class AIRepository:
 
         for hood in self.hoods:
             hood.startup()
+
+        print(self.vismap)
 
     def requestDelete(self, do):
         dg = Datagram()

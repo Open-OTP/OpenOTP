@@ -343,7 +343,6 @@ class DistributedObject(MDParticipant):
         handle = dgi.get_uint16()
         context_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
-        self.service.log.debug(f'Query requested with handle {handle} context {context_id} w/ parent {parent_id} to object {self.do_id} from {sender}.')
 
         if parent_id != self.do_id:
             return

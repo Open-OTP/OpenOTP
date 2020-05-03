@@ -182,6 +182,11 @@ class SafeZoneAI(PlaceAI):
                 bldg.request('Toon')
                 self.buildings[block] = bldg
 
+        for visgroup in self.storage.visgroups:
+            zone = int(visgroup.name.split(':')[0])
+
+            self.air.vismap[zone] = tuple(visgroup.visibles)
+
 
 class StreetAI(SafeZoneAI):
     def __init__(self, air, zone_id):

@@ -602,6 +602,8 @@ def traverse(node, storage: DNAStorage):
         storage.blocks.append(block)
         storage.block_zones[block] = zone_id
         storage.block_building_types[block] = node.building_type
+    elif isinstance(node, DNAVisGroup):
+        storage.visgroups.append(node)
 
     if hasattr(node, 'children'):
         for child in node.children:

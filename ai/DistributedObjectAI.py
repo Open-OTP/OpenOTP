@@ -56,14 +56,11 @@ class DistributedObjectAI:
 
         self.air.storeLocation(self.do_id, oldParentId, oldZoneId, parentId, zoneId)
 
-        if zoneId != DistributedObjectAI.QUIET_ZONE:
-            if not oldZoneId == DistributedObjectAI.QUIET_ZONE:
-                logicalZone = self.lastLogicalZoneId
-            else:
-                logicalZone = oldZoneId
+        self.handleZoneChange(oldZoneId, zoneId)
 
-            self.handeLogicalZoneChange(oldZoneId, logicalZone)
-            self.lastLogicalZoneId = logicalZone
+        if zoneId != DistributedObjectAI.QUIET_ZONE:
+            self.handleLogicalZoneChange(oldZoneId, zoneId)
+            self.lastLogicalZoneId = zoneId
 
     @property
     def zoneData(self) -> AIZoneData:
@@ -88,7 +85,7 @@ class DistributedObjectAI:
             self._zoneData.destroy()
             self._zoneData = None
 
-    def handeLogicalZoneChange(self, old_zone: int, new_zone: int):
+    def handleLogicalZoneChange(self, old_zone: int, new_zone: int):
         pass
 
     def generate(self):
@@ -133,4 +130,7 @@ class DistributedObjectAI:
         pass
 
     def handleChildLeaveZone(self, obj, zoneId):
+        pass
+
+    def handleZoneChange(self, oldZoneId, zoneId):
         pass
