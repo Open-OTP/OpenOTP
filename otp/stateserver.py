@@ -10,7 +10,7 @@ from otp.messagetypes import *
 from otp.messagedirector import MDParticipant
 from otp.networking import ChannelAllocator
 from otp.constants import *
-from dc.objects import MolecularField
+from dc.objects import MolecularField, AtomicField
 
 from otp.zone import *
 
@@ -220,8 +220,14 @@ class DistributedObject(MDParticipant):
     def handle_one_update(self, dgi, sender):
         field_id = dgi.get_uint16()
         field = self.dclass.dcfile().fields[field_id]()
+        pos = dgi.tell()
         data = field.unpack_bytes(dgi)
-        self.save_field(field, data)
+
+        if isinstance(field, MolecularField):
+            dgi.seek(pos)
+            self.save_molecular(field, dgi)
+        else:
+            self.save_field(field, data)
 
         targets = []
 
@@ -240,7 +246,14 @@ class DistributedObject(MDParticipant):
             dg.add_bytes(data)
             self.service.send_datagram(dg)
 
-    def save_field(self, field, data):
+    def save_molecular(self, field: MolecularField, dgi):
+        for subfield in field.subfields:
+            if isinstance(subfield, MolecularField):
+                self.save_molecular(subfield, dgi)
+            else:
+                self.save_field(subfield, subfield.unpack_bytes(dgi))
+
+    def save_field(self, field: AtomicField, data):
         if field.is_required:
             self.required[field.name] = data
         elif field.is_ram:
