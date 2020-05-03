@@ -1,6 +1,7 @@
 import time
 
 from .DistributedObjectAI import DistributedObjectAI
+from ai.toon.DistributedToonAI import DistributedToonAI
 
 
 class ToontownDistrictAI(DistributedObjectAI):
@@ -19,23 +20,27 @@ class ToontownDistrictAI(DistributedObjectAI):
     def allowAHNNLog(self):
         return self.ahnnLog
 
+    def handleChildArrive(self, obj, zoneId):
+        if isinstance(obj, DistributedToonAI):
+            obj.sendUpdate('arrivedOnDistrict', [self.do_id, ])
+
 
 class ToontownDistrictStatsAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
 
-        self.district_id = 0
-        self.avatar_count = 0
-        self.new_avatar_count = 0
+        self.districtId = 0
+        self.avatarCount = 0
+        self.newAvatarCount = 0
 
     def gettoontownDistrictId(self):
-        return self.district_id
+        return self.districtId
 
     def getAvatarCount(self):
-        return self.avatar_count
+        return self.avatarCount
 
     def getNewAvatarCount(self):
-        return self.new_avatar_count
+        return self.newAvatarCount
 
 
 class DistributedInGameNewsMgrAI(DistributedObjectAI):

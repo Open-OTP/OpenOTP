@@ -12,3 +12,9 @@ DisconnectReasons = {
     DisconnectSwitchShards: 'switch shards',
     DisconnectGraphicsError: 'graphics error'
 }
+
+SPInvalid = 0
+SPHidden = 1
+SPRender = 2
+SPDynamic = 5
+AICollisionPriority = 10

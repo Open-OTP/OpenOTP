@@ -273,7 +273,6 @@ class DistributedObject(MDParticipant):
     def handle_datagram(self, dg, dgi):
         sender = dgi.get_channel()
         msgtype = dgi.get_uint16()
-        self.service.log.debug(f'Distributed Object {self.do_id} received msgtype {MSG_TO_NAME_DICT[msgtype]} from {sender}')
 
         if msgtype == STATESERVER_OBJECT_DELETE_RAM:
             do_id = dgi.get_uint32()

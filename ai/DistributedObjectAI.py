@@ -3,6 +3,8 @@ from otp.util import getPuppetChannel, getAccountChannel
 
 from . import AIRepository
 
+from .AIZoneData import AIZoneData
+
 
 class DistributedObjectAI:
     QUIET_ZONE = 1
@@ -13,6 +15,10 @@ class DistributedObjectAI:
         self.dclass = air.dcFile.namespace[self.__class__.__name__[:-2]]
         self.zoneId = 0
         self.parentId = 0
+
+        self._zoneData = None
+
+        self.lastLogicalZoneId = 0
 
     def generateWithRequired(self, zone_id):
         self.zoneId = zone_id
@@ -43,15 +49,44 @@ class DistributedObjectAI:
     def location(self, location):
         if location == self.location:
             return
-        parent_id, zone_id = location
-        old_parent_id, old_zone_id = self.location
-        self.parentId = parent_id
-        self.zoneId = zone_id
+        parentId, zoneId = location
+        oldParentId, oldZoneId = self.location
+        self.parentId = parentId
+        self.zoneId = zoneId
 
-        self.air.storeLocation(self.do_id, old_parent_id, old_zone_id, parent_id, zone_id)
+        self.air.storeLocation(self.do_id, oldParentId, oldZoneId, parentId, zoneId)
 
-        if zone_id != DistributedObjectAI.QUIET_ZONE:
-            self.handeLogicalZoneChange(old_zone_id, zone_id)
+        if zoneId != DistributedObjectAI.QUIET_ZONE:
+            if not oldZoneId == DistributedObjectAI.QUIET_ZONE:
+                logicalZone = self.lastLogicalZoneId
+            else:
+                logicalZone = oldZoneId
+
+            self.handeLogicalZoneChange(oldZoneId, logicalZone)
+            self.lastLogicalZoneId = logicalZone
+
+    @property
+    def zoneData(self) -> AIZoneData:
+        if self._zoneData is None:
+            self._zoneData = AIZoneData(self.air, self.parentId, self.zoneId)
+        return self._zoneData
+
+    @property
+    def render(self):
+        return self.zoneData.render
+
+    @property
+    def nonCollidableParent(self):
+        return self.zoneData.nonCollidableParent
+
+    @property
+    def parentMgr(self):
+        return self.zoneData.parentMgr
+
+    def releaseZoneData(self):
+        if self._zoneData is not None:
+            self._zoneData.destroy()
+            self._zoneData = None
 
     def handeLogicalZoneChange(self, old_zone: int, new_zone: int):
         pass
@@ -63,11 +98,39 @@ class DistributedObjectAI:
         pass
 
     def delete(self):
-        pass
+        if self.air:
+            self.releaseZoneData()
+            self.air = None
+            self.zoneId = 0
+            self.parentId = 0
+            self.do_id = None
+
+    @property
+    def deleted(self):
+        return self.air is None
+
+    @property
+    def generated(self):
+        return self.do_id is not None
 
     def requestDelete(self):
-        # TODO
-        pass
+        if not self.do_id:
+            print(f'Tried deleting {self.__class__.__name__} more than once!')
+            return
+
+        self.air.requestDelete(self)
 
     def uniqueName(self, name):
         return f'{name}={self.do_id}'
+
+    def handleChildArrive(self, obj, zoneId):
+        pass
+
+    def handleChildArriveZone(self, obj, zoneId):
+        pass
+
+    def handleChildLeave(self, obj, zoneId):
+        pass
+
+    def handleChildLeaveZone(self, obj, zoneId):
+        pass

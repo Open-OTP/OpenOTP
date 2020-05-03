@@ -6,7 +6,7 @@ from direct.task import Task
 from direct.interval.IntervalGlobal import ivalMgr
 
 
-from panda3d.core import GraphicsEngine, ClockObject, TrueClock, PandaNode
+from panda3d.core import GraphicsEngine, ClockObject, TrueClock, PandaNode, NodePath
 
 directNotify = DirectNotify.DirectNotify()
 
@@ -30,6 +30,8 @@ class AIBase:
         globalClock.set_average_frame_rate_interval(30.0)
         globalClock.tick()
         self.taskMgr.globalClock = globalClock
+
+        self.hidden = NodePath('hidden')
 
         self._setup()
 

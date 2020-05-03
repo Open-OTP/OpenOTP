@@ -1,9 +1,10 @@
 from ai.DistributedObjectAI import DistributedObjectAI
+from ai.DistributedSmoothNodeAI import DistributedSmoothNodeAI
 
 
-class DistributedAvatarAI(DistributedObjectAI):
+class DistributedAvatarAI(DistributedSmoothNodeAI):
     def __init__(self, air):
-        DistributedObjectAI.__init__(self, air)
+        DistributedSmoothNodeAI.__init__(self, air)
 
         self.name = 'Toon'
 
@@ -18,30 +19,50 @@ class DistributedPlayerAI(DistributedAvatarAI):
     def __init__(self, air):
         DistributedAvatarAI.__init__(self, air)
 
+        self.accountName = ''
+        self.DISLid = 0
+        self.access = 0
+
+    def setAccountName(self, name):
+        self.accountName = name
 
     def getAccountName(self):
-        return 'username'
+        return self.accountName
 
     def getFriendsList(self):
         return []
 
+    def setDISLid(self, DISLid):
+        self.DISLid = DISLid
+
     def getDISLid(self):
-        return 0
+        return self.DISLid
 
     def getPreviousAccess(self):
         # AccessFull = 2
         return 2
 
+    def setAccess(self, access):
+        self.access = access
+
     def getAccess(self):
-        return 2
+        return self.access
 
     def getAsGM(self):
         return False
 
 
 class DistributedToonAI(DistributedPlayerAI):
+    def __init__(self, air):
+        DistributedPlayerAI.__init__(self, air)
+
+        self.dnaString = ''
+
+    def setDNAString(self, dnaString):
+        self.dnaString = dnaString
+
     def getDNAString(self):
-        return 't\x1b\x01\x01\x01\x12\x05\x0c\x05\x03\x05\x10\x00\x12\x11'
+        return self.dnaString
 
     def getGM(self):
         return False

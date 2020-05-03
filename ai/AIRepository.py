@@ -18,6 +18,8 @@ from dna.dnaparser import DNAStorage, DNAGroup
 
 import asyncio
 
+from . import AIZoneData
+
 
 class AIProtocol(ToontownProtocol):
     def connection_made(self, transport):
@@ -61,6 +63,8 @@ class AIRepository:
         self.loop = None
         self.net_thread = None
         self.hoods = None
+
+        self.zoneDataStore = AIZoneData.AIZoneDataStore()
 
     def run(self):
         from threading import Thread
@@ -108,7 +112,7 @@ class AIRepository:
                 return
             self.handleObjEntry(dgi)
         elif msg_type == STATESERVER_OBJECT_DELETE_RAM:
-            pass
+            self.handleObjExit(dgi)
         elif msg_type == STATESERVER_OBJECT_LEAVING_AI_INTEREST:
             pass
         elif msg_type == STATESERVER_OBJECT_CHANGE_ZONE:
@@ -132,27 +136,39 @@ class AIRepository:
         self.doTable[do_id].location = (new_parent, new_zone)
         self.storeLocation(do_id, old_parent, old_zone, new_parent, new_zone)
 
-    def storeLocation(self, do_id, old_parent, old_zone, new_parent, new_zone):
-        if not do_id:
+    def storeLocation(self, doId, oldParent, oldZone, newParent, newZone):
+        if not doId:
             return
 
-        if old_zone and old_zone in self.zoneTable and do_id in self.zoneTable[old_zone]:
-            self.zoneTable[old_zone].remove(do_id)
+        obj = self.doTable.get(doId)
+        oldParentObj = self.doTable.get(oldParent)
+        newParentObj = self.doTable.get(newParent)
 
-        if old_parent and old_parent in self.parentTable and do_id in self.parentTable[old_parent]:
-            self.parentTable[old_parent].remove(do_id)
+        if oldParent != newParent and oldParentObj:
+            oldParentObj.handleChildLeave(obj, oldZone)
 
-        if new_zone:
-            if new_zone not in self.zoneTable:
-                self.zoneTable[new_zone] = set()
+        if oldParent and oldParent in self.parentTable and doId in self.parentTable[oldParent]:
+            self.parentTable[oldParent].remove(doId)
 
-            self.zoneTable[new_zone].add(do_id)
+        if oldZone != newZone and oldParentObj:
+            oldParentObj.handleChildLeaveZone(obj, oldZone)
 
-        if new_parent:
-            if new_parent not in self.parentTable:
-                self.parentTable[new_parent] = set()
+        if oldZone and oldZone in self.zoneTable and doId in self.zoneTable[oldZone]:
+            self.zoneTable[oldZone].remove(doId)
 
-            self.parentTable[new_parent].add(do_id)
+        if newZone:
+            self.zoneTable.setdefault(newZone, set())
+            self.zoneTable[newZone].add(doId)
+
+        if newParent:
+            self.parentTable.setdefault(newParent, set())
+            self.parentTable[newParent].add(doId)
+
+        if newParent != oldParent and newParentObj:
+            newParentObj.handleChildArrive(obj, newZone)
+
+        if newZone != oldZone and newParentObj:
+            newParentObj.handleChildArriveZone(obj, newZone)
 
     def sendLocation(self, do_id, old_parent: int, old_zone: int, new_parent: int, new_zone: int):
         dg = Datagram()
@@ -213,18 +229,27 @@ class AIRepository:
             return
 
         if dclass.name == 'DistributedToon':
-            from .DistributedToon import DistributedToonAI
-
+            from .toon.DistributedToonAI import DistributedToonAI
             obj = DistributedToonAI(self)
             obj.do_id = do_id
-            obj.location = (parent_id, zone_id)
+            obj.parentId = parent_id
+            obj.zoneId = zone_id
             dclass.receive_update_all_required(obj, dgi)
             self.doTable[obj.do_id] = obj
             self.storeLocation(do_id, 0, 0, parent_id, zone_id)
-
-            obj.sendUpdate('arrivedOnDistrict', [self.district.do_id, ])
         else:
             print('unknown object entry: %s' % dclass.name)
+
+    def handleObjExit(self, dgi):
+        doId = dgi.get_uint32()
+
+        try:
+            do = self.doTable.pop(doId)
+        except KeyError:
+            print(f'Received delete for unknown object: {doId}!')
+            return
+
+        do.delete()
 
     def context(self):
         self.__contextCounter = (self.__contextCounter + 1) & 0xFFFFFFFF
@@ -323,3 +348,9 @@ class AIRepository:
 
         for hood in self.hoods:
             hood.startup()
+
+    def requestDelete(self, do):
+        dg = Datagram()
+        dg.add_server_header(do.doId, self.ourChannel, STATESERVER_OBJECT_DELETE_RAM)
+        dg.add_uint32(do.doId)
+        self.send(dg)
