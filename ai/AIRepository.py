@@ -312,9 +312,6 @@ class AIRepository:
         news_mgr = NewsManagerAI(self)
         self.generateWithRequired(news_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
 
-        time_mgr = TimeManagerAI(self)
-        self.generateWithRequired(time_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
-
         self.loadZones()
 
     def loadZones(self):
