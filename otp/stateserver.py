@@ -243,7 +243,7 @@ class DistributedObject(MDParticipant):
     def save_field(self, field, data):
         if field.is_required:
             self.required[field.name] = data
-        else:
+        elif field.is_ram:
             self.ram[field.name] = data
 
         if self.db and 'db' in field.keywords:
@@ -323,8 +323,6 @@ class DistributedObject(MDParticipant):
 
                 if not len(children):
                     del self.zone_objects[old_zone]
-            else:
-                self.service.log.debug(f'Received changing location from {child_id} for {old_parent} but my id is {self.do_id}')
         elif msgtype == STATESERVER_QUERY_ZONE_OBJECT_ALL:
             self.handle_query_zone(dgi, sender)
         elif msgtype == STATESERVER_QUERY_OBJECT_ALL:
