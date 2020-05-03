@@ -97,7 +97,7 @@ class ToontownProtocol(asyncio.Protocol):
         asyncio.Protocol.__init__(self)
         self.service = service
         self.expected = 0
-        self.buf = b''
+        self.buf = bytearray()
         self.transport = None
         self.outgoing_q = Queue()
         self.incoming_q = Queue()
@@ -115,28 +115,7 @@ class ToontownProtocol(asyncio.Protocol):
             task.cancel()
 
     def data_received(self, data: bytes):
-        self.buf += data
-
-        if self.expected == 0:
-            if len(self.buf) < 2:
-                return
-
-            self.expected = struct.unpack('H', self.buf[:2])[0]
-            self.buf = self.buf[2:]
-
-        if len(self.buf) < self.expected:
-            # We are expecting more data.
-            return
-
-        data = self.buf[:self.expected]
-        self.buf = self.buf[self.expected:]
-
-        self.expected = 0
-
-        self.incoming_q.put_nowait(data)
-
-        if self.buf:
-            self.data_received(b'')
+        self.buf.extend(data)
 
     def send_datagram(self, data: Datagram):
         self.outgoing_q.put_nowait(data.get_message().tobytes())
@@ -144,20 +123,31 @@ class ToontownProtocol(asyncio.Protocol):
     async def transport_datagrams(self):
         while True:
             data: bytes = await self.outgoing_q.get()
-
             self.transport.write(len(data).to_bytes(2, byteorder='little'))
             self.transport.write(data)
 
     async def handle_datagrams(self):
-        while True:
-            data: bytes = await self.incoming_q.get()
+        # TODO: run this tight loop in a seperate process, maybe proccess pool for CA and MD
+        expected = 0
 
-            dg = Datagram()
-            dg.add_bytes(data)
-            try:
-                self.receive_datagram(dg)
-            except Exception as e:
-                self.service.log.debug(f'Exception while receiving datagram: {e.__class__}: {repr(e)}\n{traceback.print_exc()}')
+        while True:
+            if expected:
+                if len(self.buf) < expected:
+                    await asyncio.sleep(0.01)
+                    continue
+                else:
+                    dg = Datagram()
+                    dg.add_bytes(self.buf[:expected])
+                    self.receive_datagram(dg)
+                    del self.buf[:expected]
+                    expected = 0
+                    continue
+            elif len(self.buf) > 2:
+                expected = struct.unpack('H', self.buf[:2])[0]
+                del self.buf[:2]
+                continue
+            else:
+                await asyncio.sleep(0.01)
 
     def receive_datagram(self, data: bytes):
         raise NotImplementedError
