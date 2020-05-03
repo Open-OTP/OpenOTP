@@ -235,6 +235,26 @@ class DNATransformer(Transformer):
 
         return landmark
 
+    def anim_building(self, args):
+        args = deque(args)
+        kw = args.popleft()
+        name = args.popleft().value
+
+        landmark = DNAAnimBuilding(name)
+
+        while args:
+            child = args.popleft()
+
+            if isinstance(child, Tree):
+                setattr(landmark, child.data, child.children[0])
+            elif isinstance(child, DNADoor):
+                landmark.door = child
+            else:
+                child.set_parent(landmark)
+                landmark.children.append(child)
+
+        return landmark
+
     def flatbuilding(self, args):
         args = deque(args)
         kw = args.popleft()

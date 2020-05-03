@@ -1028,6 +1028,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         interest.pending_objects.clear()
 
         for pending_object in pending:
+            self.visible_objects[pending_object.do_id] = ObjectInfo(pending_object.do_id, pending_object.dc_id, pending_object.parent_id, pending_object.zone_id)
+
             self.send_datagram(pending_object.generate)
 
             for datagram in pending_object.datagrams:

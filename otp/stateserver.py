@@ -612,10 +612,10 @@ class StateServer(DownstreamMessageDirector, ChannelAllocator):
         while ai_channel is None:
             try:
                 obj = self.objects[parent_id]
+                parent_id = obj.parent_id
+                ai_channel = obj.ai_channel
             except KeyError:
                 return None
-            parent_id = obj.parent_id
-            ai_channel = obj.ai_channel
 
         return ai_channel
 

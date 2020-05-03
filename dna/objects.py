@@ -212,6 +212,14 @@ class DNALandmarkBuilding(DNANode):
         self.door = None
 
 
+class DNAAnimBuilding(DNALandmarkBuilding):
+    __slots__ = 'anim'
+
+    def __init__(self, name):
+        DNALandmarkBuilding.__init__(self, name)
+        self.anim = ''
+
+
 class DNAAnimProp(DNAProp):
     __slots__ = 'anim'
 

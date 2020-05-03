@@ -60,9 +60,7 @@ class AIRepository:
         self.currentSender = None
         self.loop = None
         self.net_thread = None
-
-        self.dnaStorage: Dict[int, DNAStorage] = {}
-        self.dnaMap: Dict[int, DNAGroup] = {}
+        self.hoods = None
 
     def run(self):
         from threading import Thread
@@ -320,15 +318,11 @@ class AIRepository:
         self.loadZones()
 
     def loadZones(self):
-        from ai.hood.HoodDataAI import TTHoodDataAI
+        from ai.hood.HoodDataAI import TTHoodAI
 
         self.hoods = [
-            TTHoodDataAI(self)
+            TTHoodAI(self)
         ]
 
         for hood in self.hoods:
-            hood.active = True
-
-    def loadDNAFile(self, path: str):
-        root, storage = load_dna_file(path)
-        return root, storage
+            hood.startup()
