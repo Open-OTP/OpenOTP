@@ -66,6 +66,18 @@ class ClientDisconnect(IntEnum):
     PERIOD_EXPIRED2 = 349
 
 
+
+@with_slots
+@dataclass
+class PendingObject:
+    do_id: int
+    dc_id: int
+    parent_id: int
+    zone_id: int
+    generate: Datagram
+    datagrams: list
+
+
 class Interest:
     def __init__(self, client, handle, context, parent_id, zones):
         self.client = client
@@ -75,6 +87,8 @@ class Interest:
         self.zones = zones
         self.done = False
         self.ai = False
+        self.pending_objects: Dict[int, PendingObject] = {}
+
 
 
 OTP_DO_ID_TOONTOWN = 4618
@@ -534,7 +548,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.service.log.debug(f'Received invalid index for name part. {e.args}')
             return
 
-        name = f'{title} {first} {last_prefix}{last_suffix}'
+        name = f'{title}{" " if title else ""}{first}{" " if first else ""}{last_prefix}{last_suffix}'
 
         for pot_av in self.potential_avatars:
             if pot_av and pot_av.do_id == av_id:
@@ -886,9 +900,22 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if sender == self.channel:
             return
 
+        pos = dgi.tell()
+        do_id = dgi.get_uint32()
+        field_number = dgi.get_uint16()
+        field = self.service.dc_file.fields[field_number]()
+        self.service.log.debug(f'upstream field update {do_id} {field}')
+
         resp = Datagram()
         resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
+        dgi.seek(pos)
         resp.add_bytes(dgi.get_remaining())
+
+        for interest in self.interests:
+            if not interest.done and do_id in interest.pending_objects:
+                interest.pending_objects[do_id].update.append(resp)
+                return
+
         self.send_datagram(resp)
 
     def handle_owned_object_entrance(self, dgi, sender):
@@ -941,17 +968,22 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if disable and visible:
             if owned:
                 # TODO
-                pass
+                return
             self.send_remove_object(do_id)
             del self.visible_objects[do_id]
         else:
-            print('sending object location!')
-            #self.send_object_location(do_id, new_parent, new_zone)
+            self.send_object_location(do_id, new_parent, new_zone)
 
     def send_remove_object(self, do_id):
         resp = Datagram()
         resp.add_uint16(CLIENT_OBJECT_DISABLE)
         resp.add_uint32(do_id)
+
+        for interest in self.interests:
+            if not interest.done and do_id in interest.pending_objects:
+                interest.pending_objects[do_id].update.append(resp)
+                return
+
         self.send_datagram(resp)
 
     def send_object_location(self, do_id, new_parent, new_zone):
@@ -960,6 +992,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(do_id)
         resp.add_uint32(new_parent)
         resp.add_uint32(new_zone)
+
+        for interest in self.interests:
+            if not interest.done and do_id in interest.pending_objects:
+                interest.pending_objects[do_id].update.append(resp)
+                return
 
         self.send_datagram(resp)
 
@@ -985,6 +1022,17 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest.done = True
 
+        pending = [pending_object for pending_object in interest.pending_objects.values()]
+        pending.sort(key=lambda p: p.dc_id)
+
+        interest.pending_objects.clear()
+
+        for pending_object in pending:
+            self.send_datagram(pending_object.generate)
+
+            for datagram in pending_object.datagrams:
+                self.send_datagram(datagram)
+
         if not interest.ai:
             resp = Datagram()
             resp.add_uint16(CLIENT_DONE_INTEREST_RESP)
@@ -1005,6 +1053,18 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         parent_id = dgi.get_uint32()
         zone_id = dgi.get_uint32()
         dc_id = dgi.get_uint16()
+
+        for interest in self.interests:
+            if not interest.done and interest.parent_id == parent_id and zone_id in interest.zones:
+                resp = Datagram()
+                resp.add_uint16(CLIENT_CREATE_OBJECT_REQUIRED_OTHER if has_other else CLIENT_CREATE_OBJECT_REQUIRED)
+                resp.add_uint32(parent_id)
+                resp.add_uint32(zone_id)
+                resp.add_uint16(dc_id)
+                resp.add_uint32(do_id)
+                resp.add_bytes(dgi.get_remaining())
+                interest.pending_objects[do_id] = PendingObject(do_id, dc_id, parent_id, zone_id, generate=resp, datagrams=[])
+                return
 
         self.visible_objects[do_id] = ObjectInfo(do_id, dc_id, parent_id, zone_id)
 

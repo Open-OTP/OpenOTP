@@ -15,6 +15,7 @@ class DistributedObjectAI:
         self.parentId = 0
 
     def generateWithRequired(self, zone_id):
+        self.zoneId = zone_id
         self.air.generateWithRequired(self, self.air.district.do_id, zone_id)
 
     def sendUpdate(self, field_name, args):

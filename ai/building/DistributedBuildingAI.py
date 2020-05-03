@@ -63,13 +63,17 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
         self.interior.generateWithRequired(self.interiorZoneId)
 
         door = DistributedDoorAI(self.air, self.block, DoorTypes.EXT_STANDARD)
+        door.zoneId = self.exteriorZoneId
+
         insideDoor = DistributedDoorAI(self.air, self.block, DoorTypes.INT_STANDARD)
+        insideDoor.zoneId = self.interiorZoneId
+
         door.setOtherDoor(insideDoor)
         insideDoor.setOtherDoor(door)
-        door.zoneId = self.exteriorZoneId
-        insideDoor.zoneId = self.interiorZoneId
+
         door.generateWithRequired(self.exteriorZoneId)
         insideDoor.generateWithRequired(self.interiorZoneId)
+
         self.door = door
         self.insideDoor = insideDoor
 
