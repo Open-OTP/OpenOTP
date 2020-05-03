@@ -57,7 +57,7 @@ class DistributedObject(MDParticipant):
             if not field.is_required:
                 continue
 
-            if not client_only or field.is_broadcast or 'clrecv' in field.keywords or (also_owner and field.is_ownrecv):
+            if not client_only or field.is_broadcast or field.is_clrecv or (also_owner and field.is_ownrecv):
                 dg.add_bytes(self.required[field.name])
 
     def append_other_data(self, dg, client_only, also_owner):
@@ -67,7 +67,7 @@ class DistributedObject(MDParticipant):
             count = 0
             for field_name, raw_data in self.ram.items():
                 field = self.dclass.fields_by_name[field_name]
-                if field.is_broadcast or 'clrecv' in field.keywords or (also_owner and field.is_ownrecv):
+                if field.is_broadcast or field.is_clrecv or (also_owner and field.is_ownrecv):
                     fields_dg.add_uint16(field.number)
                     fields_dg.add_bytes(raw_data)
                     count += 1
@@ -223,7 +223,7 @@ class DistributedObject(MDParticipant):
         data = field.unpack_bytes(dgi)
         self.save_field(field, data)
 
-        targets = list()
+        targets = []
 
         if field.is_broadcast:
             targets.append(location_as_channel(self.parent_id, self.zone_id))
@@ -246,7 +246,7 @@ class DistributedObject(MDParticipant):
         elif field.is_ram:
             self.ram[field.name] = data
 
-        if self.db and 'db' in field.keywords:
+        if self.db and field.is_db:
             dg = Datagram()
             dg.add_server_header([DBSERVERS_CHANNEL], self.do_id, DBSERVER_SET_STORED_VALUES)
             dg.add_uint32(self.do_id)
@@ -440,7 +440,7 @@ class StateServerProtocol(MDUpstreamProtocol):
         query.add_uint16(0)
         count = 0
         for field in dclass:
-            if not isinstance(field, MolecularField) and 'db' in field.keywords:
+            if not isinstance(field, MolecularField) and field.is_db:
                 if field.name == 'DcObjectType':
                     continue
                 query.add_uint16(field.number)
@@ -485,7 +485,7 @@ class StateServerProtocol(MDUpstreamProtocol):
             else:
                 ram[field.name] = data
 
-            if 'db' in field.keywords:
+            if field.is_db:
                 dg = Datagram()
                 dg.add_server_header([DBSERVERS_CHANNEL], do_id, DBSERVER_SET_STORED_VALUES)
                 dg.add_uint32(do_id)
@@ -553,7 +553,7 @@ class StateServerProtocol(MDUpstreamProtocol):
 
                 field = dclass.fields[field_number]
 
-                if 'ram' not in field.keywords:
+                if not field.is_ram:
                     self.service.log.debug(f'Received non-RAM field {field.name} within an OTHER section.\n')
                     field.unpack_bytes(dgi)
                     continue

@@ -19,7 +19,6 @@ class DBServerProtocol(MDUpstreamProtocol):
     def handle_datagram(self, dg, dgi):
         sender = dgi.get_channel()
         msg_id = dgi.get_uint16()
-        print('got dg', sender, msg_id)
 
         if msg_id == DBSERVER_CREATE_STORED_OBJECT:
             self.handle_create_object(sender, dgi)

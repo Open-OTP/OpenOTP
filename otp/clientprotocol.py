@@ -125,8 +125,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.state: int = ClientState.NEW
         self.channel: int = service.new_channel_id()
-        self.subscribe_channel(self.channel)
         self.alloc_channel = self.channel
+        self.subscribe_channel(self.channel)
 
         self.interests: List[Interest] = []
         self.visible_objects: Dict[int, ObjectInfo] = {}
@@ -260,9 +260,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         sendable = False
 
-        if 'ownsend' in field.keywords and do_id in self.owned_objects:
+        if field.is_ownsend and do_id in self.owned_objects:
             sendable = True
-        elif 'clsend' in field.keywords:
+        elif field.is_clsend:
             sendable = True
 
         if not sendable:
@@ -427,7 +427,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         count = 0
         for field in dclass.inherited_fields:
-            if not isinstance(field, MolecularField) and 'db' in field.keywords:
+            if not isinstance(field, MolecularField) and field.is_db:
                 if field.name == 'DcObjectType':
                     continue
                 dg.add_uint16(field.number)

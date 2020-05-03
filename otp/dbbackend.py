@@ -54,7 +54,7 @@ class SQLBackend(DatabaseBackend):
 
             columns = []
             for field in dclass.inherited_fields:
-                if 'db' in field.keywords:
+                if field.is_db:
                     columns.append(f'{field.name} blob,')
 
             if not columns:
@@ -88,7 +88,7 @@ class SQLBackend(DatabaseBackend):
         values = ["X'%s'" % field[1].hex().upper() for field in fields]
 
         for field in dclass.inherited_fields:
-            if 'db' in field.keywords and field.is_required:
+            if field.is_db and field.is_required:
                 if field.name not in columns:
                     raise OTPCreateFailed('Missing required db field: %s' % field.name)
 
