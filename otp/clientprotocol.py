@@ -1013,7 +1013,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         interest.done = True
 
         pending = [pending_object for pending_object in interest.pending_objects.values()]
-        # pending.sort(key=lambda p: p.dc_id)
+        # Need this sorting.
+        pending.sort(key=lambda p: p.dc_id)
 
         interest.pending_objects.clear()
 
