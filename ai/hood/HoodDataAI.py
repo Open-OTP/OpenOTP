@@ -158,11 +158,12 @@ class SafeZoneAI(PlaceAI):
         for block in self.storage.blocks:
             building_type = self.storage.block_building_types[block]
             interiorZone = self.getInteriorZone(self.zone_id, block)
+            exteriorZone = self.storage.block_zones.get(block, self.zone_id)
 
             if building_type == 'hq':
-                self.buildings[block] = HQBuildingAI(self.air, self.zone_id, interiorZone, block)
+                self.buildings[block] = HQBuildingAI(self.air, exteriorZone, interiorZone, block)
             elif building_type == 'gagshop':
-                self.buildings[block] = GagshopBuildingAI(self.air, self.zone_id, interiorZone, block)
+                self.buildings[block] = GagshopBuildingAI(self.air, exteriorZone, interiorZone, block)
             elif building_type == 'petshop':
                 # TODO
                 pass
@@ -173,7 +174,6 @@ class SafeZoneAI(PlaceAI):
                 # TODO
                 pass
             else:
-                exteriorZone = self.storage.block_zones[block]
                 bldg = DistributedBuildingAI(self.air)
                 bldg.block = block
                 bldg.exteriorZoneId = exteriorZone
