@@ -14,6 +14,10 @@ DNA_MAP = {
     SillyStreet: 'toontown_central_2100.dna',
     LoopyLane: 'toontown_central_2200.dna',
     PunchlinePlace: 'toontown_central_2300.dna',
+    TheBrrrgh: 'the_burrrgh_sz.dna',
+    WalrusWay: 'the_burrrgh_3100.dna',
+    SleetStreet: 'the_burrrgh_3200.dna',
+    PolarPlace: 'the_burrrgh_3300.dna',
 }
 
 
@@ -241,3 +245,7 @@ class DDHoodAI(HoodAI):
 
 class TTHoodAI(HoodAI):
     zoneId = ToontownCentral
+
+
+class BRHoodAI(HoodAI):
+    zoneId = TheBrrrgh
