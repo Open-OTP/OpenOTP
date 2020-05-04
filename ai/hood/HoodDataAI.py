@@ -22,6 +22,10 @@ DNA_MAP = {
     AltoAvenue: 'minnies_melody_land_4100.dna',
     BaritoneBoulevard: 'minnies_melody_land_4200.dna',
     TenorTerrace: 'minnies_melody_land_4300.dna',
+    DaisyGardens: 'daisys_garden_sz.dna',
+    ElmStreet: 'daisys_garden_5100.dna',
+    MapleStreet: 'daisys_garden_5200.dna',
+    OakStreet: 'daisys_garden_5300.dna',
 }
 
 
@@ -257,3 +261,7 @@ class BRHoodAI(HoodAI):
 
 class MMHoodAI(HoodAI):
     zoneId = MinniesMelodyland
+
+
+class DGHoodAI(HoodAI):
+    zoneId = DaisyGardens

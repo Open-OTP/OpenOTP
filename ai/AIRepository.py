@@ -340,13 +340,14 @@ class AIRepository:
         self.loadZones()
 
     def loadZones(self):
-        from ai.hood.HoodDataAI import DDHoodAI, TTHoodAI, BRHoodAI, MMHoodAI
+        from ai.hood.HoodDataAI import DDHoodAI, TTHoodAI, BRHoodAI, MMHoodAI, DGHoodAI
 
         self.hoods = [
             DDHoodAI(self),
             TTHoodAI(self),
             BRHoodAI(self),
-            MMHoodAI(self)
+            MMHoodAI(self),
+            DGHoodAI(self)
         ]
 
         for hood in self.hoods:
