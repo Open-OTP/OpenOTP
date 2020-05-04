@@ -2,7 +2,7 @@ dna: (store_font | store_texture | model | group | store_suit_point)+
 
 group: KW_GROUP STRING_LITERAL "[" (group | visgroup | prop | street | flatbuilding | landmark | anim_building | interactive_prop | node)* "]"
 visgroup: KW_VISGROUP STRING_LITERAL "[" vis (group | visgroup | prop | node | landmark | flatbuilding | suit_edge | battle_cell | interactive_prop | street | anim_prop)* "]"
-node: KW_NODE STRING_LITERAL "[" (prop | landmark | street | flatbuilding)* "]"
+node: KW_NODE STRING_LITERAL "[" (prop | landmark | street | flatbuilding | node)* "]"
 street: KW_STREET STRING_LITERAL "[" (_node_properties | code | texture)+ "]"
 vis: KW_VIS "[" STRING_LITERAL+ "]"
 
