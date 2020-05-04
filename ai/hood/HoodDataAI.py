@@ -6,6 +6,10 @@ from dna.objects import DNAGroup
 from ai.toon import NPCToons
 
 DNA_MAP = {
+    DonaldsDock: 'donalds_dock_sz.dna',
+    BarnacleBoulevard: 'donalds_dock_1100.dna',
+    SeaweedStreet: 'donalds_dock_1200.dna',
+    LighthouseLane: 'donalds_dock_1300.dna',
     ToontownCentral: 'toontown_central_sz.dna',
     SillyStreet: 'toontown_central_2100.dna',
     LoopyLane: 'toontown_central_2200.dna',
@@ -229,6 +233,10 @@ class HoodAI:
         self.playground.active = False
         for street in self.streets:
             street.active = False
+
+
+class DDHoodAI(HoodAI):
+    zoneId = DonaldsDock
 
 
 class TTHoodAI(HoodAI):
