@@ -26,6 +26,9 @@ DNA_MAP = {
     ElmStreet: 'daisys_garden_5100.dna',
     MapleStreet: 'daisys_garden_5200.dna',
     OakStreet: 'daisys_garden_5300.dna',
+    DonaldsDreamland: 'donalds_dreamland_sz.dna',
+    LullabyLane: 'donalds_dreamland_9100.dna',
+    PajamaPlace: 'donalds_dreamland_9200.dna',
 }
 
 
@@ -265,3 +268,7 @@ class MMHoodAI(HoodAI):
 
 class DGHoodAI(HoodAI):
     zoneId = DaisyGardens
+
+
+class DLHoodAI(HoodAI):
+    zoneId = DonaldsDreamland
