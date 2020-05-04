@@ -18,6 +18,10 @@ DNA_MAP = {
     WalrusWay: 'the_burrrgh_3100.dna',
     SleetStreet: 'the_burrrgh_3200.dna',
     PolarPlace: 'the_burrrgh_3300.dna',
+    MinniesMelodyland: 'minnies_melody_land_sz.dna',
+    AltoAvenue: 'minnies_melody_land_4100.dna',
+    BaritoneBoulevard: 'minnies_melody_land_4200.dna',
+    TenorTerrace: 'minnies_melody_land_4300.dna',
 }
 
 
@@ -249,3 +253,7 @@ class TTHoodAI(HoodAI):
 
 class BRHoodAI(HoodAI):
     zoneId = TheBrrrgh
+
+
+class MMHoodAI(HoodAI):
+    zoneId = MinniesMelodyland
