@@ -3,6 +3,7 @@ from typing import List, Dict, Union
 from ai.DistributedObjectAI import DistributedObjectAI
 from dna.dnaparser import load_dna_file, DNAStorage
 from dna.objects import DNAGroup
+from ai.toon import NPCToons
 
 DNA_MAP = {
     ToontownCentral: 'toontown_central_sz.dna',
@@ -85,11 +86,11 @@ class HQBuildingAI(object):
         self.insideDoor1 = insideDoor1
 
         # TODO
-        # self.npcs = NPCToons.createNpcsInZone(self.air, self.interiorZone)
+        self.npcs = NPCToons.createNpcsInZone(air, interiorZone)
 
     def delete(self):
-        # for npc in self.npcs:
-        #     npc.requestDelete()
+        for npc in self.npcs:
+            npc.requestDelete()
         self.door0.requestDelete()
         self.door1.requestDelete()
         self.insideDoor0.requestDelete()
@@ -118,9 +119,11 @@ class GagshopBuildingAI(object):
         self.door = door
         self.insideDoor = insideDoor
 
+        self.npcs = NPCToons.createNpcsInZone(air, interiorZone)
+
     def cleanup(self):
-        # for npc in self.npcs:
-        #     npc.requestDelete()
+        for npc in self.npcs:
+            npc.requestDelete()
 
         self.door.requestDelete()
         self.insideDoor.requestDelete()
@@ -201,10 +204,12 @@ class StreetAI(SafeZoneAI):
 class PlaygroundAI(SafeZoneAI):
     def __init__(self, air, zone_id):
         SafeZoneAI.__init__(self, air, zone_id)
+        self.npcs = []
 
     def create(self):
         super().create()
 
+        self.npcs = NPCToons.createNpcsInZone(self.air, self.zone_id)
         # TODO: trolley, butterflys, disney npc
 
 

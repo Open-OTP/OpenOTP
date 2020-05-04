@@ -296,7 +296,7 @@ class AIRepository:
 
         do.location = (parent_id, zone_id)
         do.generate()
-        do.announce_generate()
+        do.announceGenerate()
 
     def createObjects(self):
         self.registerForChannel(self.ourChannel)
@@ -349,7 +349,6 @@ class AIRepository:
         for hood in self.hoods:
             hood.startup()
 
-        print(self.vismap)
 
     def requestDelete(self, do):
         dg = Datagram()

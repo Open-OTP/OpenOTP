@@ -4,6 +4,8 @@ from direct.distributed.ClockDelta import globalClockDelta
 from .DistributedToonInteriorAI import DistributedToonInteriorAI
 from .DistributedDoorAI import DistributedDoorAI
 
+from ai.toon import NPCToons
+
 
 from direct.fsm.FSM import FSM
 
@@ -35,6 +37,7 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
         self.door = None
         self.insideDoor = None
         self.interior = None
+        self.npcs = []
 
     def getBlock(self):
         return [self.block, self.interiorZoneId]
@@ -76,6 +79,8 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
 
         self.door = door
         self.insideDoor = insideDoor
+
+        self.npcs = NPCToons.createNpcsInZone(self.air, self.interiorZoneId)
 
         # self.becameSuitTime = 0
         # self.knockKnock = DistributedKnockKnockDoorAI.DistributedKnockKnockDoorAI(self.air, self.block)

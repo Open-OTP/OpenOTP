@@ -91,7 +91,7 @@ class DistributedObjectAI:
     def generate(self):
         pass
 
-    def announce_generate(self):
+    def announceGenerate(self):
         pass
 
     def delete(self):

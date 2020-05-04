@@ -12,6 +12,8 @@ from otp.networking import ChannelAllocator
 from otp.constants import *
 from dc.objects import MolecularField, AtomicField
 
+from typing import Dict, Set
+
 from otp.zone import *
 
 
@@ -33,7 +35,7 @@ class DistributedObject(MDParticipant):
         self.ai_explicitly_set = False
         self.parent_synced = False
         self.next_context = 0
-        self.zone_objects = {}
+        self.zone_objects: Dict[int, Set[int]] = {}
 
         if self.dclass:
             self.service.log.debug(f'Generating new object {do_id} with dclass {self.dclass.name} in location {parent_id} {zone_id}')
@@ -177,7 +179,7 @@ class DistributedObject(MDParticipant):
     def handle_ai_change(self, new_ai, sender, channel_is_explicit):
         pass
 
-    def annihilate(self, sender, notify_parent=False):
+    def annihilate(self, sender, notify_parent=True):
         targets = list()
 
         if self.parent_id:
@@ -602,7 +604,7 @@ class StateServer(DownstreamMessageDirector, ChannelAllocator):
 
         self.loop.set_exception_handler(self._on_exception)
 
-        self.objects = dict()
+        self.objects: Dict[int, DistributedObject] = {}
         self.database_objects = set()
         self.queries = {}
 
