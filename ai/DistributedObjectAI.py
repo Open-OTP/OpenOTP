@@ -134,3 +134,7 @@ class DistributedObjectAI:
 
     def handleZoneChange(self, oldZoneId, zoneId):
         pass
+
+    def sendSetZone(self, newZone: int):
+        self.air.sendLocation(self.do_id, self.parentId, self.zoneId, self.parentId, newZone)
+        self.location = (self.parentId, newZone)
