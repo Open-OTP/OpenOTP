@@ -156,7 +156,7 @@ class DistributedObject(MDParticipant):
             self.zone_id = new_zone
 
             targets.append(self.parent_id)
-            targets.append(location_as_channel(self.parent_id, new_zone))
+            targets.append(location_as_channel(self.parent_id, old_zone))
         else:
             # Not changing zones.
             return
