@@ -11,6 +11,8 @@ from panda3d.core import GraphicsEngine, ClockObject, TrueClock, PandaNode, Node
 directNotify = DirectNotify.DirectNotify()
 
 from .AIRepository import AIRepository
+import builtins
+import time
 
 
 class AIBase:
@@ -30,6 +32,7 @@ class AIBase:
         globalClock.set_average_frame_rate_interval(30.0)
         globalClock.tick()
         self.taskMgr.globalClock = globalClock
+        builtins.globalClock = globalClock
 
         self.hidden = NodePath('hidden')
 
@@ -41,6 +44,7 @@ class AIBase:
         self.taskMgr.add(self._reset_prev_transform, 'resetPrevTransform', priority=-51)
         self.taskMgr.add(self._ival_loop, 'ivalLoop', priority=20)
         self.taskMgr.add(self._ig_loop, 'igLoop', priority=50)
+        self.taskMgr.add(self.__sleep, 'aiSleep', priority=55)
         self.eventMgr.restart()
 
     def _reset_prev_transform(self, state):
@@ -53,6 +57,10 @@ class AIBase:
 
     def _ig_loop(self, state):
         self.graphicsEngine.renderFrame()
+        return Task.cont
+
+    def __sleep(self, task):
+        time.sleep(self.AISleep)
         return Task.cont
 
     def run(self):
