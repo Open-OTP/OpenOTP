@@ -354,9 +354,8 @@ class AIRepository:
         for hood in self.hoods:
             hood.startup()
 
-
     def requestDelete(self, do):
         dg = Datagram()
-        dg.add_server_header(do.doId, self.ourChannel, STATESERVER_OBJECT_DELETE_RAM)
-        dg.add_uint32(do.doId)
+        dg.add_server_header([do.do_id], self.ourChannel, STATESERVER_OBJECT_DELETE_RAM)
+        dg.add_uint32(do.do_id)
         self.send(dg)
