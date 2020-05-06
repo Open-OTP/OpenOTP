@@ -171,7 +171,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         dgi = dg.iterator()
         msgtype = dgi.get_uint16()
 
-        self.service.log.debug(f'Got message type {MSG_TO_NAME_DICT[msgtype]} from client {self.channel}')
+        if msgtype != CLIENT_OBJECT_UPDATE_FIELD:
+            self.service.log.debug(f'Got message type {MSG_TO_NAME_DICT[msgtype]} from client {self.channel}')
 
         if msgtype == CLIENT_HEARTBEAT:
             self.send_datagram(dg)
@@ -645,6 +646,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         for do_id in self.visible_objects:
             do = self.visible_objects[do_id]
             if do.parent_id == parent_id and do.zone_id in uninterested_zones:
+                self.service.log.debug(f'Object {do_id} killed by interest remove.')
                 self.send_remove_object(do_id)
 
                 to_remove.append(do_id)
@@ -816,11 +818,18 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             else:
                 killed_zones = set(previous_interest.zones).difference(set(zones))
 
-            for do_id in list(self.visible_objects.keys()):
-                obj = self.visible_objects[do_id]
-                if obj.parent_id == parent_id and obj.zone_id in killed_zones:
-                    self.send_remove_object(obj.do_id)
-                    del self.visible_objects[do_id]
+            for _interest in self.interests:
+                killed_zones = killed_zones.difference(set(_interest.zones))
+                if not killed_zones:
+                    break
+
+            if killed_zones:
+                for do_id in list(self.visible_objects.keys()):
+                    obj = self.visible_objects[do_id]
+                    if obj.parent_id == parent_id and obj.zone_id in killed_zones:
+                        self.service.log.debug(f'Object {obj.do_id}, location ({obj.parent_id}, {obj.zone_id}), killed by altered interest: {zones}')
+                        self.send_remove_object(obj.do_id)
+                        del self.visible_objects[do_id]
 
             for zone in killed_zones:
                 self.unsubscribe_channel(location_as_channel(previous_interest.parent_id, zone))
@@ -861,8 +870,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         msgtype = dgi.get_uint16()
 
-        self.service.log.debug(f'Client {self.channel} received msg {msgtype} from upstream channel {sender}.')
-
         self.check_futures(dgi, msgtype, sender)
 
         if msgtype == STATESERVER_OBJECT_ENTERZONE_WITH_REQUIRED_OTHER:
@@ -881,7 +888,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         elif msgtype == STATESERVER_OBJECT_UPDATE_FIELD:
             do_id = dgi.get_uint32()
 
-            if self.queue_pending(do_id, dgi, pos):
+            if not self.object_exists(do_id):
+                self.queue_pending(do_id, dgi, pos)
                 return
 
             self.handle_update_field(dgi, sender, do_id)
@@ -893,7 +901,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                     self.disconnect(ClientDisconnect.RELOGGED, 'redundant login')
                 else:
                     self.disconnect(ClientDisconnect.SHARD_DISCONNECT, 'district reset')
-            elif self.queue_pending(do_id, dgi, pos):
+            elif not self.object_exists(do_id):
+                self.queue_pending(do_id, dgi, pos)
                 return
             else:
                 self.send_remove_object(do_id)
@@ -908,11 +917,13 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if sender == self.channel:
             return
 
+        if not do_id in self.visible_objects:
+            self.service.log.debug(f'Got field update for unknown object {do_id}')
+
         pos = dgi.tell()
 
         field_number = dgi.get_uint16()
         field = self.service.dc_file.fields[field_number]()
-        self.service.log.debug(f'upstream field update {do_id} {field}')
 
         resp = Datagram()
         resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
@@ -957,6 +968,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         owned = do_id in self.owned_objects
 
         if not visible and not owned:
+            self.service.log.debug(f'Got location change for unknown object {do_id}')
             return
 
         if visible:
@@ -971,12 +983,14 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             if owned:
                 # TODO
                 return
+            self.service.log.debug(f'Got location change and object is no longer visible. Disabling {do_id}')
             self.send_remove_object(do_id)
             del self.visible_objects[do_id]
         else:
             self.send_object_location(do_id, new_parent, new_zone)
 
     def send_remove_object(self, do_id):
+        self.service.log.debug(f'Sending removal of {do_id}.')
         resp = Datagram()
         resp.add_uint16(CLIENT_OBJECT_DISABLE)
         resp.add_uint32(do_id)
@@ -1018,8 +1032,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest.pending_objects.clear()
 
+        self.service.log.debug(f'Replaying datagrams for ')
+
         for pending_object in pending:
-            self.service.log.debug(f'Replaying back datagrams for pending object {pending_object.do_id}: {len(pending_object.datagrams)}')
             for datagram in pending_object.datagrams:
                 self.handle_datagram(datagram, datagram.iterator())
 
@@ -1063,6 +1078,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         for interest in self.interests:
             if not interest.done and interest.parent_id == parent_id and zone_id in interest.zones:
                 return interest
+
+    def object_exists(self, do_id):
+        return do_id in self.visible_objects or do_id in self.owned_objects
 
     def queue_pending(self, do_id, dgi, pos):
         for interest in self.interests:
