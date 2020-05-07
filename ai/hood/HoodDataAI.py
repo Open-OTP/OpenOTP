@@ -5,6 +5,7 @@ from dna.dnaparser import load_dna_file, DNAStorage
 from dna.objects import DNAGroup
 from ai.toon import NPCToons
 from ai.safezone import ButterflyGlobals
+from ai.safezone.DistributedButterflyAI import DistributedButterflyAI
 from ai.suit.DistributedSuitPlannerAI import DistributedSuitPlannerAI
 
 DNA_MAP = {
@@ -235,6 +236,7 @@ class PlaygroundAI(SafeZoneAI):
     def __init__(self, air, zone_id):
         SafeZoneAI.__init__(self, air, zone_id)
         self.npcs = []
+        self.butterflies = []
 
     def create(self):
         super().create()
@@ -244,6 +246,12 @@ class PlaygroundAI(SafeZoneAI):
 
     def createButterflies(self, playground):
         ButterflyGlobals.generateIndexes(self.zone_id, playground)
+        for i in range(0, ButterflyGlobals.NUM_BUTTERFLY_AREAS[playground]):
+            for _ in range(0, ButterflyGlobals.NUM_BUTTERFLIES[playground]):
+                butterfly = DistributedButterflyAI(self.air, playground, i, self.zone_id)
+                butterfly.generateWithRequired(self.zone_id)
+                butterfly.start()
+                self.addDistObj(butterfly)
 
 
 class HoodAI:

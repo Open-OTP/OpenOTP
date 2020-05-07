@@ -1,4 +1,10 @@
-from panda3d.core import Point3
+from panda3d.core import Point3, Vec3
+import random
+NUM_BUTTERFLIES = (6, 36, 5)
+NUM_BUTTERFLY_AREAS = (4, 1, 4)
+BUTTERFLY_SPEED = 2.0
+BUTTERFLY_TAKEOFF = (1.4, 1.8, 1.4)
+BUTTERFLY_LANDING = (1.4, 1.8, 1.4)
 TTC = 0
 ButterflyPoints = (((Point3(84.0, -116.0, 3.5),
    Point3(95.0, -144.0, 2.6),
@@ -178,3 +184,44 @@ def generateIndexes(doId, playground):
         unusedI.append([])
 
     allocatedIndexes[doId] = (usedI, unusedI)
+
+def getFirstRoute(playground, area, doId):
+    curPos, curIndex = __getCurrentPos(playground, area, doId)
+    destPos, destIndex, time = getNextPos(curPos, playground, area, doId)
+    return curPos, curIndex, destPos, destIndex, time
+
+def __getCurrentPos(playground, area, doId):
+    if doId in allocatedIndexes:
+        unusedI = allocatedIndexes[doId][0][area]
+        usedI = allocatedIndexes[doId][1][area]
+    else:
+        return ButterflyPoints[playground][area][0], 0
+    if len(unusedI) == 0:
+        index = random.choice(usedI)
+        return ButterflyPoints[playground][area][index], index
+    index = random.choice(unusedI)
+    unusedI.remove(index)
+    usedI.append(index)
+    return ButterflyPoints[playground][area][index], index
+
+def getNextPos(currentPos, playground, area, doId):
+    if doId in allocatedIndexes:
+        unusedI = allocatedIndexes[doId][0][area]
+        usedI = allocatedIndexes[doId][1][area]
+    else:
+        return ButterflyPoints[playground][area][0], 0, 4.0
+    nextPos = currentPos
+    while nextPos == currentPos:
+        if len(unusedI) == 0:
+            index = random.choice(usedI)
+            nextPos = ButterflyPoints[playground][area][index]
+        else:
+            index = random.choice(unusedI)
+            nextPos = ButterflyPoints[playground][area][index]
+            if nextPos != currentPos:
+                unusedI.remove(index)
+                usedI.append(index)
+
+    dist = Vec3(nextPos - currentPos).length()
+    time = dist / BUTTERFLY_SPEED + BUTTERFLY_TAKEOFF[playground] + BUTTERFLY_LANDING[playground]
+    return nextPos, index, time

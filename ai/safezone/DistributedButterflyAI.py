@@ -1,4 +1,5 @@
 from ai.DistributedObjectAI import DistributedObjectAI
+from ai.safezone import ButterflyGlobals
 
 from direct.fsm.FSM import FSM
 
