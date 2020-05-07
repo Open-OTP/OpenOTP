@@ -127,6 +127,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.interests: List[Interest] = []
         self.visible_objects: Dict[int, ObjectInfo] = {}
         self.owned_objects: Dict[int, ObjectInfo] = {}
+        self.pending_objects: Dict[int, PendingObject] = {}
 
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
