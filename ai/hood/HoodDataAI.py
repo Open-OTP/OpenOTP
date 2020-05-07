@@ -4,6 +4,7 @@ from ai.DistributedObjectAI import DistributedObjectAI
 from dna.dnaparser import load_dna_file, DNAStorage
 from dna.objects import DNAGroup
 from ai.toon import NPCToons
+from ai.safezone import ButterflyGlobals
 from ai.suit.DistributedSuitPlannerAI import DistributedSuitPlannerAI
 
 DNA_MAP = {
@@ -241,6 +242,9 @@ class PlaygroundAI(SafeZoneAI):
         self.npcs = NPCToons.createNpcsInZone(self.air, self.zone_id)
         # TODO: trolley, butterflys, disney npc
 
+    def createButterflies(self, playground):
+        ButterflyGlobals.generateIndexes(self.zone_id, playground)
+
 
 class HoodAI:
     zoneId = None
@@ -268,6 +272,7 @@ class TTHoodAI(HoodAI):
     zoneId = ToontownCentral
 
     def startup(self):
+        self.playground.createButterflies(ButterflyGlobals.TTC)
         for street in self.streets:
             street.wantSuits = True
         super().startup()
