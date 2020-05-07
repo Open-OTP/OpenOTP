@@ -1,8 +1,5 @@
 from ai.DistributedObjectAI import DistributedObjectAI
 
-
-from ai.hood.HoodDataAI import PlaceAI
-
 from dataclasses import dataclass
 from dataslots import with_slots
 from typing import List, Tuple, Dict
@@ -28,10 +25,17 @@ class SuitHoodInfo:
     levels: Tuple[int]
     buildingDifficulties: Tuple[int]
 
+
 SUIT_HOOD_INFO = {
-    SillyStreet: SuitHoodInfo(zoneId=SillyStreet, minSuits=5, maxSuits=15, minSuitBldgs=0, maxSuitBldgs=5, buildingWeight=5,
+    SillyStreet: SuitHoodInfo(zoneId=SillyStreet, minSuits=5, maxSuits=15, minSuitBldgs=0, maxSuitBldgs=5, buildingWeight=20,
                               maxBattleSuits=3, joinChances=(1, 5, 10, 40, 60, 80), deptChances=(25, 25, 25, 25),
-                              levels=(1, 2, 3), buildingDifficulties=())
+                              levels=(1, 2, 3), buildingDifficulties=()),
+    LoopyLane: SuitHoodInfo(zoneId=SillyStreet, minSuits=3, maxSuits=10, minSuitBldgs=0, maxSuitBldgs=5,
+                            buildingWeight=15, maxBattleSuits=3, joinChances=(1, 5, 10, 40, 60, 80),
+                            deptChances=(10, 70, 10, 10), levels=(1, 2, 3), buildingDifficulties=()),
+    PunchlinePlace: SuitHoodInfo(zoneId=PunchlinePlace, minSuits=3, maxSuits=10, minSuitBldgs=0, maxSuitBldgs=5,
+                                 buildingWeight=15, maxBattleSuits=3, joinChances=(1, 5, 10, 40, 60, 80),
+                                 deptChances=(10, 10, 40, 40), levels=(1, 2, 3), buildingDifficulties=()),
 }
 
 from dna.objects import DNASuitPoint, SuitPointType, SuitLegType, FROM_SKY, SUIT_WALK_SPEED
@@ -66,9 +70,9 @@ def pickFromFreqList(freqList):
 
 
 class DistributedSuitPlannerAI(DistributedObjectAI):
-    def __init__(self, air, place: PlaceAI):
+    def __init__(self, air, place):
         DistributedObjectAI.__init__(self, air)
-        self.place: PlaceAI = place
+        self.place = place
         self.zoneId = self.place.zone_id
         self.info: SuitHoodInfo = SUIT_HOOD_INFO[place.zone_id]
         self.battleMgr: BattleManagerAI = BattleManagerAI(self.air)

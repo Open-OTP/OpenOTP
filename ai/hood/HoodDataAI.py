@@ -1,9 +1,10 @@
 from ai.ToontownGlobals import *
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 from ai.DistributedObjectAI import DistributedObjectAI
 from dna.dnaparser import load_dna_file, DNAStorage
 from dna.objects import DNAGroup
 from ai.toon import NPCToons
+from ai.suit.DistributedSuitPlannerAI import DistributedSuitPlannerAI
 
 DNA_MAP = {
     DonaldsDock: 'donalds_dock_sz.dna',
@@ -206,7 +207,6 @@ class SafeZoneAI(PlaceAI):
 
         for visgroup in self.storage.visgroups:
             zone = int(visgroup.name.split(':')[0])
-
             visibles = visgroup.visibles
             if self.zone_id not in visibles:
                 visibles.append(self.zone_id)
@@ -217,10 +217,17 @@ class StreetAI(SafeZoneAI):
     def __init__(self, air, zone_id):
         SafeZoneAI.__init__(self, air, zone_id)
 
+        self.wantSuits = False
+        self.suitPlanner: Optional[DistributedSuitPlannerAI] = None
+
     def create(self):
         super().create()
 
         # TODO: suits
+        if self.wantSuits:
+            self.suitPlanner = DistributedSuitPlannerAI(self.air, self)
+            self.suitPlanner.generateWithRequired(self.zone_id)
+            self.suitPlanner.startup()
 
 
 class PlaygroundAI(SafeZoneAI):
@@ -259,6 +266,11 @@ class DDHoodAI(HoodAI):
 
 class TTHoodAI(HoodAI):
     zoneId = ToontownCentral
+
+    def startup(self):
+        for street in self.streets:
+            street.wantSuits = True
+        super().startup()
 
 
 class BRHoodAI(HoodAI):
