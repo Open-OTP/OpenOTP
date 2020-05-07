@@ -286,6 +286,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.service.log.debug(f'Client {self.channel} is setting their location to {parent_id} {zone_id}')
 
         if do_id in self.owned_objects:
+            self.owned_objects[do_id].zone_id = zone_id
+            self.owned_objects[do_id].parent_id = parent_id
             dg = Datagram()
             dg.add_server_header([do_id], self.channel, STATESERVER_OBJECT_SET_ZONE)
             dg.add_uint32(parent_id)
@@ -655,7 +657,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             del self.visible_objects[do_id]
 
         for zone in uninterested_zones:
-            # print('unSUBSCRIBING FROM ', parent_id, zone, location_as_channel(parent_id, zone))
+
             self.unsubscribe_channel(location_as_channel(parent_id, zone))
 
         self.interests.remove(interest)
@@ -811,6 +813,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             interest = Interest(self.channel, handle, context_id, parent_id, zones)
             self.interests.append(interest)
         else:
+            self.service.log.debug(f'Altering interest {handle} (done: {previous_interest.done}): {previous_interest.zones} -> {zones}')
             self.interests.remove(previous_interest)
 
             if previous_interest.parent_id != parent_id:
@@ -822,6 +825,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 killed_zones = killed_zones.difference(set(_interest.zones))
                 if not killed_zones:
                     break
+
+            self.service.log.debug(f'Zones killed by altering interest: {killed_zones}')
 
             if killed_zones:
                 for do_id in list(self.visible_objects.keys()):
@@ -880,6 +885,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             do_id = dgi.get_uint32()
 
             if self.queue_pending(do_id, dgi, pos):
+                self.service.log.debug(f'Queued location change for pending object {do_id}.')
                 return
 
             self.handle_location_change(dgi, sender, do_id)
@@ -889,7 +895,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             do_id = dgi.get_uint32()
 
             if not self.object_exists(do_id):
-                self.queue_pending(do_id, dgi, pos)
+                queued = self.queue_pending(do_id, dgi, pos)
+                if queued:
+                    self.service.log.debug(f'Queued field update for pending object {do_id}.')
                 return
 
             self.handle_update_field(dgi, sender, do_id)
@@ -902,10 +910,12 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 else:
                     self.disconnect(ClientDisconnect.SHARD_DISCONNECT, 'district reset')
             elif not self.object_exists(do_id):
+                self.service.log.debug(f'Queued deletion for pending object {do_id}.')
                 self.queue_pending(do_id, dgi, pos)
                 return
             else:
                 self.send_remove_object(do_id)
+                del self.visible_objects[do_id]
         elif msgtype == CLIENT_AGENT_SET_INTEREST:
             self.receive_add_interest(dgi, ai=True)
         elif msgtype == CLIENT_AGENT_REMOVE_INTEREST:
@@ -949,13 +959,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.send_datagram(resp)
 
     def handle_location_change(self, dgi, sender, do_id):
-        # TODO: if do_id is from pending interest, queue the location change.
-
         new_parent = dgi.get_uint32()
         new_zone = dgi.get_uint32()
         old_parent = dgi.get_uint32()
         old_zone = dgi.get_uint32()
-        print('CA', 'location_change', new_parent, new_zone, do_id)
+        self.service.log.debug(f'Handle location change for {do_id}: ({old_parent} {old_zone}) -> ({new_parent} {new_zone})')
 
         disable = True
 
@@ -981,7 +989,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         if disable and visible:
             if owned:
-                # TODO
+                self.send_object_location(do_id, new_parent, new_zone)
                 return
             self.service.log.debug(f'Got location change and object is no longer visible. Disabling {do_id}')
             self.send_remove_object(do_id)
@@ -1032,7 +1040,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest.pending_objects.clear()
 
-        self.service.log.debug(f'Replaying datagrams for ')
+        self.service.log.debug(f'Replaying datagrams for {[p.do_id for p in pending]}')
 
         for pending_object in pending:
             for datagram in pending_object.datagrams:
@@ -1059,6 +1067,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest = self.get_pending_interest(parent_id, zone_id)
         if interest:
+            self.service.log.debug(f'Queueing object generate for {do_id} in ({parent_id} {zone_id}) {do_id in self.visible_objects}')
             pending_object = PendingObject(do_id, dc_id, datagrams=[])
             dg = Datagram()
             dgi.seek(pos)
@@ -1067,7 +1076,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             interest.pending_objects[do_id] = pending_object
             return
 
-        if do_id in self.owned_objects:
+        if self.object_exists(do_id):
             return
 
         self.visible_objects[do_id] = ObjectInfo(do_id, dc_id, parent_id, zone_id)

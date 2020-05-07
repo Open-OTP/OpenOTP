@@ -172,8 +172,7 @@ class AIRepository:
 
     def sendLocation(self, do_id, old_parent: int, old_zone: int, new_parent: int, new_zone: int):
         dg = Datagram()
-        dg.add_server_header([do_id], self.ourChannel, STATESERVER_OBJECT_CHANGE_ZONE)
-        dg.add_uint32(do_id)
+        dg.add_server_header([do_id], self.ourChannel, STATESERVER_OBJECT_SET_ZONE)
         dg.add_uint32(new_parent)
         dg.add_uint32(new_zone)
         dg.add_uint32(old_parent)

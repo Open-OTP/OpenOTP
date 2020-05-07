@@ -46,8 +46,8 @@ class DNAVisGroup(DNAGroup):
     def __init__(self, name):
         DNAGroup.__init__(self, name)
         self.visibles: List[int] = []
-        self.suit_edges = []
-        self.battle_cells = []
+        self.suit_edges: List[DNASuitEdge] = []
+        self.battle_cells: List[DNABattleCell] = []
         self.vis_group = self
 
 
@@ -410,8 +410,8 @@ class SuitLegList:
         b = storage.suit_point_map[path[-1]]
         a = storage.suit_point_map[path[-2]]
 
-        if b.point_type != SuitPointType.FRONTDOORPOINT:
-            if b.point_type == SuitPointType.SIDEDOORPOINT:
+        if b.point_type != SuitPointType.FRONT_DOOR_POINT:
+            if b.point_type == SuitPointType.SIDE_DOOR_POINT:
                 leg_type = SuitLegType.TToSuitBuilding
             else:
                 leg_type = SuitLegType.TToSky
@@ -473,6 +473,9 @@ class SuitLegList:
 
     def __getitem__(self, i):
         return self.legs[i]
+
+    def __len__(self):
+        return len(self.legs)
 
 
 def get_leg_time(a, b, leg_type):

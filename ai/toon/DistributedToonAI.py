@@ -393,7 +393,7 @@ class DistributedToonAI(DistributedPlayerAI):
             print('remove interest')
             self.air.removeInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0)
         elif new_zone in self.air.vismap:
-            visibles = self.air.vismap[new_zone]
+            visibles = self.air.vismap[new_zone][:]
             if len(visibles) == 1 and visibles[0] == new_zone:
                 # Playground visgroup, ignore
                 return

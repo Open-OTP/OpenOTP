@@ -44,8 +44,8 @@ class DNAStorage:
     def get_suit_edge_travel_time(self, start_index: int, end_index: int, walk_speed: float) -> float:
         edge = self.get_suit_edge(start_index, end_index)
 
-        start = self.suit_points[edge.start]
-        end = self.suit_points[edge.end]
+        start = self.suit_point_map[edge.start]
+        end = self.suit_point_map[edge.end]
 
         return (start.pos - end.pos).length() / walk_speed
 
@@ -76,80 +76,56 @@ class DNAStorage:
         else:
             suit_point.graph_id = graph_id
             for edge in self.suit_edges[suit_point.index]:
-                self.discover_connections(self.suit_points[edge.end], graph_id)
+                self.discover_connections(self.suit_point_map[edge.end], graph_id)
 
     def get_suit_path(self, start_point: DNASuitPoint, end_point: DNASuitPoint, min_length: int, max_length: int) -> List[int]:
         if start_point.graph_id != end_point.graph_id:
             return []
 
-        path = []
-        return self.get_suit_path_breadth_first(path, start_point, end_point, min_length, max_length)
+        path = self.get_suit_path_breadth_first(start_point, end_point, min_length, max_length)
 
-    def get_suit_path_breadth_first(self, path, start_point, end_point, min_length, max_length) -> List[int]:
-        path.append(start_point.index)
+        if path is None:
+            return []
 
-        path_size = 1
-        if min_length - 1 > 1:
-            v10 = min_length - 2
-            path_size = min_length - 1
-            while True:
-                self.generate_next_suit_path_chain(path)
-                v10 -= 1
-                if not v10:
-                    break
-
-        if path_size < max_length:
-            while True:
-                path_size += 1
-                if self.consider_next_suit_path_chain(path, end_point):
-                    return path
-                if path_size > max_length:
-                    break
+        while len(path) < min_length:
+            start = path[-1]
+            min_length -= len(path)
+            max_length -= len(path)
+            for adj in self.get_adjacent_points(start):
+                subpath = self.get_suit_path_breadth_first(self.suit_point_map[adj], end_point, min_length, max_length)
+                path.extend(subpath)
+                break
 
         return path
 
-    def generate_next_suit_path_chain(self, path: List[int]):
-        start_index = path[-1]
+    def get_suit_path_breadth_first(self, start_point: DNASuitPoint, end_point: DNASuitPoint, min_length: int, max_length: int):
+        considering = deque()
+        visited = set()
 
-        for edge in self.suit_edges[start_index]:
-            end_point = self.suit_points[edge.end]
-            if edge.end == start_index:
-                continue
+        considering.append([start_point.index])
+        visited.add(start_point.index)
 
-            if edge.end in path:
-                continue
+        while considering:
+            path = considering.popleft()
+            start_point_index = path[-1]
 
-            if end_point.point_type == SuitPointType.FRONT_DOOR_POINT:
-                continue
+            if len(path) >= max_length:
+                return
 
-            if end_point.point_type == SuitPointType.SIDE_DOOR_POINT:
-                continue
+            for point in self.get_adjacent_points(start_point_index):
+                # We have already visited this suit point.
+                if point in visited:
+                    continue
 
-            path.append(edge.end)
-            return
+                # Check for our end point.
+                if point == end_point.index:
+                    return path + [point]
 
-    def consider_next_suit_path_chain(self, path: List[int], end_point: DNASuitPoint):
-        start_index = path[-1]
+                visited.add(point)
 
-        for edge in self.suit_edges[start_index]:
-            if edge.end == start_index:
-                continue
-
-            if edge.end in path:
-                continue
-
-            if edge.end == end_point.index:
-                path.append(edge.end)
-                return True
-
-            if end_point.point_type == SuitPointType.FRONT_DOOR_POINT:
-                continue
-
-            if end_point.point_type == SuitPointType.SIDE_DOOR_POINT:
-                continue
-
-            path.append(edge.end)
-            return False
+                # Check for a non-door point.
+                if self.suit_point_map[point].point_type == SuitPointType.STREET_POINT:
+                    considering.append(path + [point])
 
 
 # TODO: make AI specific Transformer with discarded nodes for load speed up
@@ -191,6 +167,7 @@ class DNATransformer(Transformer):
                 if isinstance(child, DNABattleCell):
                     visgroup.battle_cells.append(child)
                 elif isinstance(child, DNASuitEdge):
+                    child.zone_id = int(visgroup.name)
                     visgroup.suit_edges.append(child)
 
                 visgroup.children.append(child)
@@ -535,6 +512,7 @@ class DNATransformer(Transformer):
         else:
             _, index, point_type, x, y, z, landmark_index = args
 
+        index = index.value
         x, y, z = x.value, y.value, z.value
 
         point_type = SuitPointType[point_type]
@@ -543,7 +521,7 @@ class DNATransformer(Transformer):
 
     def suit_edge(self, args):
         _, a, b = args
-        suit_edge = DNASuitEdge(a, b, -1)
+        suit_edge = DNASuitEdge(a.value, b.value, -1)
         return suit_edge
 
     def width(self, args):
@@ -585,14 +563,20 @@ class DNATransformer(Transformer):
         token.value = token[1:-1]
         return token
 
+    def UNSIGNED_INT_LITERAL(self, token):
+        token.value = int(token.value)
+        return token
+
+    def ZERO_LITERAL(self, token):
+        token.value = 0
+        return token
+
 
 def traverse(node, storage: DNAStorage):
     if isinstance(node, DNAGroup):
         storage.groups[node.name] = node
     if isinstance(node, DNASuitEdge):
-        if node.start not in storage.suit_edges:
-            storage.suit_edges[node.start] = list()
-        storage.suit_edges[node.start].append(node)
+        storage.suit_edges.setdefault(node.start, []).append(node)
     elif isinstance(node, DNASuitPoint):
         storage.suit_points.append(node)
         storage.suit_point_map[node.index] = node
@@ -627,3 +611,18 @@ def load_dna_file(dna_path):
 
     return tree, storage
 
+
+# tree, storage = load_dna_file('dna/toontown_central_2100.dna')
+#
+# # a = storage.suit_point_map[241]
+# # b = storage.suit_point_map[379]
+# # b2 = storage.suit_point_map[242]
+#
+# path = [431, 180, 181, 187, 188, 385, 383, 198, 199, 206, 209, 212, 220, 221, 222, 226, 228, 230, 231, 232, 238, 240, 241, 379, 242, 243, 251, 252, 253, 244, 245, 380, 246, 247, 239, 233, 234, 229, 227, 223, 224, 214, 215, 208,
+#  207, 200, 201, 382, 384, 189, 190, 182, 183, 184, 436, 433, 178, 167, 166, 165, 162, 163, 155, 156, 147, 146, 145, 339, 140, 141, 131, 439, 332, 133, 123, 386, 388, 392, 391, 119, 109, 110, 107, 106, 105, 397, 97, 98, 87, 88,
+#  402, 79, 80, 404, 406, 71, 67, 409, 410, 413, 503, 504, 505, 506, 54, 46, 47, 40, 272, 41, 35, 36, 32, 27, 29, 20, 22, 23, 262, 426, 9, 425, 423, 420, 421, 424, 11, 6, 427, 261, 17, 18, 19, 24, 25, 26, 31, 33, 34, 37, 419, 418,
+#  438, 45, 51, 494, 495, 498, 500, 412, 408, 72, 69, 407, 405, 76, 77, 78, 401, 85, 86, 95, 96, 396, 100, 113, 111, 112, 118, 390, 389, 387, 122, 127, 128, 331, 440, 130, 138, 139, 338, 150, 149, 148, 153, 154, 160, 161, 168, 170,
+#  172, 430, 431, 180, 181, 187, 188, 385, 383]
+#
+# sll = SuitLegList(path, storage)
+# print('t', sll.get_start_time(60))

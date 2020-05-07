@@ -207,7 +207,10 @@ class SafeZoneAI(PlaceAI):
         for visgroup in self.storage.visgroups:
             zone = int(visgroup.name.split(':')[0])
 
-            self.air.vismap[zone] = tuple(visgroup.visibles)
+            visibles = visgroup.visibles
+            if self.zone_id not in visibles:
+                visibles.append(self.zone_id)
+            self.air.vismap[zone] = tuple(visibles)
 
 
 class StreetAI(SafeZoneAI):
