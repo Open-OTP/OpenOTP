@@ -66,12 +66,13 @@ class ClientDisconnect(IntEnum):
     PERIOD_EXPIRED2 = 349
 
 
-
 @with_slots
 @dataclass
 class PendingObject:
     do_id: int
     dc_id: int
+    parent_id: int
+    zone_id: int
     datagrams: list
 
 
@@ -84,7 +85,7 @@ class Interest:
         self.zones = zones
         self.done = False
         self.ai = False
-        self.pending_objects: Dict[int, PendingObject] = {}
+        self.pending_objects: List[int] = []
 
 
 OTP_DO_ID_TOONTOWN = 4618
@@ -127,7 +128,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.interests: List[Interest] = []
         self.visible_objects: Dict[int, ObjectInfo] = {}
         self.owned_objects: Dict[int, ObjectInfo] = {}
-        self.pending_objects: Dict[int, PendingObject] = {}
 
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
@@ -136,6 +136,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.potential_avatar = None
         self.potential_avatars: List[PotentialAvatar] = []
         self.avs_deleted: List[Tuple[int, int]] = []
+        self.pending_objects: Dict[int, PendingObject] = {}
 
     def disconnect(self, booted_index, booted_text):
         for task in self.tasks:
@@ -658,7 +659,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             del self.visible_objects[do_id]
 
         for zone in uninterested_zones:
-
             self.unsubscribe_channel(location_as_channel(parent_id, zone))
 
         self.interests.remove(interest)
@@ -842,6 +842,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
             interest = Interest(self.channel, handle, context_id, parent_id, zones)
             self.interests.append(interest)
+
+            for do_id in list(self.pending_objects.keys()):
+                if not self.pending_object_needed(do_id):
+                    del self.pending_objects[do_id]
 
         interest.ai = ai
 
@@ -1035,11 +1039,10 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         interest.done = True
 
-        pending = [pending_object for pending_object in interest.pending_objects.values()]
+        pending = [self.pending_objects.pop(do_id) for do_id in interest.pending_objects if do_id in self.pending_objects]
         # Need this sorting.
         pending.sort(key=lambda p: p.dc_id)
-
-        interest.pending_objects.clear()
+        del interest.pending_objects[:]
 
         self.service.log.debug(f'Replaying datagrams for {[p.do_id for p in pending]}')
 
@@ -1066,15 +1069,19 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         zone_id = dgi.get_uint32()
         dc_id = dgi.get_uint16()
 
-        interest = self.get_pending_interest(parent_id, zone_id)
-        if interest:
+        pending_interests = list(self.get_pending_interests(parent_id, zone_id))
+
+        if len(pending_interests):
             self.service.log.debug(f'Queueing object generate for {do_id} in ({parent_id} {zone_id}) {do_id in self.visible_objects}')
-            pending_object = PendingObject(do_id, dc_id, datagrams=[])
+            pending_object = PendingObject(do_id, dc_id, parent_id, zone_id, datagrams=[])
             dg = Datagram()
             dgi.seek(pos)
             dg.add_bytes(dgi.get_remaining())
             pending_object.datagrams.append(dg)
-            interest.pending_objects[do_id] = pending_object
+            self.pending_objects[do_id] = pending_object
+
+            for interest in pending_interests:
+                interest.pending_objects.append(do_id)
             return
 
         if self.object_exists(do_id):
@@ -1084,22 +1091,28 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
         self.send_object_entrance(parent_id, zone_id, dc_id, do_id, dgi, has_other)
 
-    def get_pending_interest(self, parent_id, zone_id):
+    def get_pending_interests(self, parent_id, zone_id):
         for interest in self.interests:
             if not interest.done and interest.parent_id == parent_id and zone_id in interest.zones:
-                return interest
+                yield interest
 
     def object_exists(self, do_id):
         return do_id in self.visible_objects or do_id in self.owned_objects
 
     def queue_pending(self, do_id, dgi, pos):
+        if do_id in self.pending_objects:
+            dgi.seek(pos)
+            dg = Datagram()
+            dg.add_bytes(dgi.get_remaining())
+            self.pending_objects[do_id].datagrams.append(dg)
+            return True
+        return False
+
+    def pending_object_needed(self, do_id):
         for interest in self.interests:
-            if not interest.done and do_id in interest.pending_objects:
-                dgi.seek(pos)
-                dg = Datagram()
-                dg.add_bytes(dgi.get_remaining())
-                interest.pending_objects[do_id].datagrams.append(dg)
+            if do_id in interest.pending_objects:
                 return True
+
         return False
 
     def send_object_entrance(self, parent_id, zone_id, dc_id, do_id, dgi, has_other):
