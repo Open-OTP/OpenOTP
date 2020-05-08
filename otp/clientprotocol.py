@@ -932,7 +932,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if sender == self.channel:
             return
 
-        if not do_id in self.visible_objects:
+        if not self.object_exists(do_id):
             self.service.log.debug(f'Got field update for unknown object {do_id}')
 
         pos = dgi.tell()
