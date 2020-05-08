@@ -4,18 +4,53 @@ from .DistributedObjectAI import DistributedObjectAI
 from ai.toon.DistributedToonAI import DistributedToonAI
 
 
-class ToontownDistrictAI(DistributedObjectAI):
+class DistributedDistrictAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
-        self.name = 'ToonTown'
-        self.available = True
-        self.ahnnLog = False
+        self.name = ''
+        self.available = False
+
+    def setName(self, name):
+        self.name = name
+
+    def d_setName(self, name):
+        self.sendUpdate('setName', [name])
+
+    def b_setName(self, name):
+        self.setName(name)
+        self.d_setName(name)
 
     def getName(self):
         return self.name
 
+    def setAvailable(self, available):
+        self.available = available
+
+    def d_setAvailable(self, available):
+        self.sendUpdate('setAvailable', [available])
+
+    def b_setAvailable(self, available):
+        self.setAvailable(available)
+        self.d_setAvailable(available)
+
     def getAvailable(self):
         return self.available
+
+
+class ToontownDistrictAI(DistributedDistrictAI):
+    def __init__(self, air):
+        DistributedDistrictAI.__init__(self, air)
+        self.ahnnLog = False
+
+    def allowAHNNLog(self, ahnnLog):
+        self.ahnnLog = ahnnLog
+
+    def d_allowAHNNLog(self, ahnnLog):
+        self.sendUpdate('allowAHNNLog', [ahnnLog])
+
+    def b_allowAHNNLog(self, ahnnLog):
+        self.allowAHNNLog(ahnnLog)
+        self.d_allowAHNNLog(ahnnLog)
 
     def allowAHNNLog(self):
         return self.ahnnLog
@@ -28,16 +63,45 @@ class ToontownDistrictAI(DistributedObjectAI):
 class ToontownDistrictStatsAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
-
-        self.districtId = 0
+        self.toontownDistrictId = 0
         self.avatarCount = 0
         self.newAvatarCount = 0
 
+    def settoontownDistrictId(self, toontownDistrictId):
+        self.toontownDistrictId = toontownDistrictId
+
+    def d_settoontownDistrictId(self, toontownDistrictId):
+        self.sendUpdate('settoontownDistrictId', [toontownDistrictId])
+
+    def b_settoontownDistrictId(self, toontownDistrictId):
+        self.settoontownDistrictId(toontownDistrictId)
+        self.d_settoontownDistrictId(toontownDistrictId)
+
     def gettoontownDistrictId(self):
-        return self.districtId
+        return self.toontownDistrictId
+
+    def setAvatarCount(self, avatarCount):
+        self.avatarCount = avatarCount
+
+    def d_setAvatarCount(self, avatarCount):
+        self.sendUpdate('setAvatarCount', [avatarCount])
+
+    def b_setAvatarCount(self, avatarCount):
+        self.setAvatarCount(avatarCount)
+        self.d_setAvatarCount(avatarCount)
 
     def getAvatarCount(self):
         return self.avatarCount
+
+    def setNewAvatarCount(self, newAvatarCount):
+        self.newAvatarCount = newAvatarCount
+
+    def d_setNewAvatarCount(self, newAvatarCount):
+        self.sendUpdate('setNewAvatarCount', [newAvatarCount])
+
+    def b_setNewAvatarCount(self, newAvatarCount):
+        self.setNewAvatarCount(newAvatarCount)
+        self.d_setNewAvatarCount(newAvatarCount)
 
     def getNewAvatarCount(self):
         return self.newAvatarCount

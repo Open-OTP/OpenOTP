@@ -304,6 +304,7 @@ class AIRepository:
         from .TimeManagerAI import TimeManagerAI
 
         self.district = ToontownDistrictAI(self)
+        self.district.setName('Toontown')
         self.generateWithRequired(self.district, OTP_DO_ID_TOONTOWN, OTP_ZONE_ID_DISTRICTS)
 
         post_remove = Datagram()
@@ -319,6 +320,7 @@ class AIRepository:
         self.send(dg)
 
         stats = ToontownDistrictStatsAI(self)
+        stats.settoontownDistrictId(self.district.do_id)
         self.generateWithRequired(stats, OTP_DO_ID_TOONTOWN, OTP_ZONE_ID_DISTRICTS_STATS)
 
         dg = Datagram()
@@ -337,6 +339,8 @@ class AIRepository:
         self.generateWithRequired(news_mgr, self.district.do_id, OTP_ZONE_ID_MANAGEMENT)
 
         self.loadZones()
+
+        self.district.b_setAvailable(True)
 
     def loadZones(self):
         from ai.hood.HoodDataAI import DDHoodAI, TTHoodAI, BRHoodAI, MMHoodAI, DGHoodAI, DLHoodAI
