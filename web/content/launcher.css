@@ -1,0 +1,78 @@
+body {
+	text-align: center; color: rgb(0, 0, 0); padding-top: 0px; padding-bottom: 0px; font-family: arial, helvetica; font-size: 10pt; margin-top: 0px; margin-bottom: 0px; background-color: rgb(255, 255, 255);
+}
+td {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+p {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+select {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+option {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+textarea {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+input {
+	color: rgb(0, 0, 0); font-family: arial, helvetica; font-size: 10pt;
+}
+#launcher {
+	margin: 0px auto; padding: 10px 0px 0px; width: 280px; text-align: left;
+}
+.news {
+	padding: 10px 0px 0px; width: 280px;
+}
+.newsImg {
+	width: 22px; height: 28px; margin-top: 10px; margin-bottom: 10px; float: left;
+}
+.newsTxt {
+	width: 243px; text-align: justify; margin-top: 10px; margin-bottom: 10px; margin-left: 5px; float: left;
+}
+.newsTitle {
+	font-weight: bold;
+}
+.subtitle {
+	color: rgb(204, 0, 0); font-weight: bold;
+}
+.subtitle2 {
+	text-align: left; color: rgb(204, 0, 0); font-weight: bold;
+}
+#blgHdr {
+	
+}
+.lineSpcr {
+	margin: 10px 0px; text-align: center;
+}
+.line {
+	margin: 0px auto; width: 280px; font-size: 2px; border-top-color: rgb(204, 204, 204); border-top-width: 2px; border-top-style: solid;
+}
+.col1 {
+	width: 22px;
+}
+.col2 {
+	width: 5px;
+}
+.col3 {
+	width: 243px;
+}
+.disneyParks {
+	color: rgb(0, 204, 38);
+}
+#ttGate {
+	padding: 3px 5px; color: rgb(255, 255, 255); display: none; background-color: rgb(136, 3, 3);
+}
+#ttGate a:link {
+	color: rgb(255, 255, 255); text-decoration: underline;
+}
+#ttGate a:visited {
+	color: rgb(255, 255, 255); text-decoration: underline;
+}
+#ttGate a:hover {
+	color: rgb(255, 255, 255); text-decoration: underline;
+}
+#ttGate a:active {
+	color: rgb(255, 255, 255); text-decoration: underline;
+}
