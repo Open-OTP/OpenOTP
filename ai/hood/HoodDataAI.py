@@ -251,7 +251,7 @@ class PlaygroundAI(SafeZoneAI):
                 butterfly = DistributedButterflyAI(self.air, playground, i, self.zone_id)
                 butterfly.generateWithRequired(self.zone_id)
                 butterfly.start()
-                self.addDistObj(butterfly)
+                self.butterflies.append(butterfly)
 
 
 class HoodAI:

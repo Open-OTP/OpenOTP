@@ -21,8 +21,20 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
         self.stateIndex = -1
         self.curPos, self.curIndex, self.destPos, self.destIndex, self.time = ButterflyGlobals.getFirstRoute(self.playground, self.area, self.ownerId)
 
+    def delete(self):
+        ButterflyGlobals.recycleIndex(self.curIndex, self.playground, self.area, self.ownerId)
+        ButterflyGlobals.recycleIndex(self.destIndex, self.playground, self.area, self.ownerId)
+        self.request('Off')
+        DistributedObjectAI.delete(self)
+
+    def d_setState(self, stateIndex, curIndex, destIndex, time):
+        self.sendUpdate('setState', [stateIndex, curIndex, destIndex, time, globalClockDelta.getRealNetworkTime()])
+
     def getArea(self):
         return [self.playground, self.area]
 
     def getState(self):
         return [self.stateIndex, self.curIndex, self.destIndex, self.time, globalClockDelta.getRealNetworkTime()]
+
+    def start(self):
+        self.request('Flying')
