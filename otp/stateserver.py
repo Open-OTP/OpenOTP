@@ -555,7 +555,7 @@ class StateServerProtocol(MDUpstreamProtocol):
         ram = {}
 
         for field in dclass.inherited_fields:
-            if field.is_required:
+            if not isinstance(field, MolecularField) and field.is_required:
                 required[field.name] = field.unpack_bytes(dgi)
 
         if other:
