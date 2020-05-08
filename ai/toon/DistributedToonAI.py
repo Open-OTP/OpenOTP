@@ -386,16 +386,13 @@ class DistributedToonAI(DistributedPlayerAI):
         return 0
 
     def handleZoneChange(self, old_zone: int, new_zone: int):
-        print('ZONE CHANGE', old_zone, new_zone)
         channel = getPuppetChannel(self.do_id)
 
         if old_zone in self.air.vismap and new_zone not in self.air.vismap:
-            print('remove interest')
             self.air.removeInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0)
         elif new_zone in self.air.vismap:
             visibles = self.air.vismap[new_zone][:]
             if len(visibles) == 1 and visibles[0] == new_zone:
                 # Playground visgroup, ignore
                 return
-            print('setinterest', self.STREET_INTEREST_HANDLE, self.parentId, visibles)
             self.air.setInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0, self.parentId, visibles)

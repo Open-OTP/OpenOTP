@@ -80,7 +80,7 @@ from typing import Optional, List
 from ai.suit import DistributedSuitPlannerAI
 
 
-UPDATE_TIMESTAMP_INTERVAL = 180.0
+UPDATE_TIMESTAMP_INTERVAL = 60.0
 
 
 class DistributedSuitAI(DistributedSuitBaseAI):
@@ -150,7 +150,6 @@ class DistributedSuitAI(DistributedSuitBaseAI):
         elapsed = now - self.pathStartTime
         nextLeg = self.legList.get_leg_index_at_time(elapsed, 0)  # self.currentLeg)
         numLegs = len(self.legList)
-        print('moveNextLeg-%d' % self.do_id, now, elapsed, nextLeg, numLegs)
         if self.currentLeg != nextLeg:
             self.currentLeg = nextLeg
             self.__beginLegType(self.legList.get_type(nextLeg))
@@ -171,12 +170,10 @@ class DistributedSuitAI(DistributedSuitBaseAI):
         if nextLeg < numLegs:
             nextTime = self.legList.get_start_time(nextLeg)
             delay = nextTime - elapsed
-            print('move to next leg in', delay, self.do_id)
             taskMgr.doMethodLater(delay, self.moveToNextLeg, self.uniqueName('move'))
         else:
             # if self.attemptingTakeover:
             #     self.startTakeOver()
-            print('ok bye:', self.do_id)
             self.requestRemoval()
         return Task.done
 
@@ -191,7 +188,7 @@ class DistributedSuitAI(DistributedSuitBaseAI):
 
     def __enterZone(self, zoneId):
         if zoneId != self.zoneId:
-            print('suit zone change', self.zoneId, '->', zoneId)
+            # print('suit zone change', self.zoneId, '->', zoneId)
             #self.suitPlanner.zoneChange(self, self.zoneId, zoneId)
             self.sendSetZone(zoneId)
             self.zoneId = zoneId
