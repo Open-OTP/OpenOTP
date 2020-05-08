@@ -16,7 +16,7 @@ import time
 
 
 class AIBase:
-    AISleep = 0.04
+    AISleep = 0.01
 
     def __init__(self):
         self.eventMgr = EventManager.EventManager()
@@ -26,10 +26,10 @@ class AIBase:
 
         self.graphicsEngine = GraphicsEngine()
 
-        globalClock = ClockObject.get_global_clock()
-        self.trueClock = TrueClock.get_global_ptr()
-        globalClock.set_real_time(self.trueClock.get_short_time())
-        globalClock.set_average_frame_rate_interval(30.0)
+        globalClock = ClockObject.getGlobalClock()
+        self.trueClock = TrueClock.getGlobalPtr()
+        globalClock.setRealTime(self.trueClock.getShortTime())
+        globalClock.setAverageFrameRateInterval(30.0)
         globalClock.tick()
         self.taskMgr.globalClock = globalClock
         builtins.globalClock = globalClock
@@ -80,6 +80,7 @@ def main():
     import builtins
     builtins.simbase = AIBase()
     builtins.taskMgr = simbase.taskMgr
+    builtins.messenger = simbase.messenger
     simbase.run()
 
 

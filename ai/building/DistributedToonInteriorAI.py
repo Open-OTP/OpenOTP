@@ -4,6 +4,8 @@ from ai.DistributedObjectAI import DistributedObjectAI
 from direct.distributed.ClockDelta import globalClockDelta
 from direct.fsm.FSM import FSM
 
+from ai.toon import NPCToons
+
 import pickle
 
 
@@ -68,3 +70,9 @@ class DistributedToonInteriorAI(DistributedObjectAI, FSM):
 
     def exitBeingTakenOver(self):
         pass
+
+
+class DistributedToonHallInteriorAI(DistributedToonInteriorAI):
+    def __init__(self, air):
+        DistributedToonInteriorAI.__init__(self, air)
+

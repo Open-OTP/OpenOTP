@@ -55,6 +55,7 @@ NPC_SCIENTIST = 11
 
 NPCToonDict = {
     20000: (-1, NPCToonNames[20000], ('dll', 'ms', 'm', 'm', 7, 0, 7, 7, 2, 6, 2, 6, 2, 16), 'm', 1, NPC_REGULAR),
+    2001: (2513, NPCToonNames[2001], ('dss', 'ms', 'm', 'm', 17, 0, 17, 17, 3, 3, 3, 3, 7, 2), 'm', 1, NPC_FLIPPYTOONHALL),
     999: (-1, NPCToonNames[999], 'r', 'm', 1, NPC_TAILOR),
     1000: (-1, NPCToonNames[1000], 'r', 'm', 1, NPC_HQ),
     20001: (-1, NPCToonNames[20001], ('dss', 'ms', 'm', 'm', 17, 0, 17, 17, 3, 3, 3, 3, 7, 2), 'm', 1, NPC_BLOCKER),
@@ -741,11 +742,9 @@ def createNPC(air, npcId, zoneId, posIndex=0):
     elif npcType == NPC_SPECIALQUESTGIVER:
         npc = DistributedNPCSpecialQuestGiverAI(air, npcId, name)
     elif npcType == NPC_FLIPPYTOONHALL:
-        # TODO
-        return None
+        npc = DistributedNPCFlippyInToonHallAI(air, npcId, name)
     elif npcType == NPC_SCIENTIST:
-        # TODO
-        return None
+        npc = DistributedNPCScientistAI(air, npcId, name)
     else:
         raise Exception(f'unknown npc type: {npcType}')
 

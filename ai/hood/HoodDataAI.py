@@ -159,8 +159,7 @@ class DistributedGagshopInteriorAI(DistributedObjectAI):
         self.zoneId = zoneId
 
     def getZoneIdAndBlock(self):
-        r = [self.zoneId, self.block]
-        return r
+        return self.zoneId, self.block
 
 
 from ai.building.DistributedBuildingAI import DistributedBuildingAI

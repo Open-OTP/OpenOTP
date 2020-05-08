@@ -1,10 +1,11 @@
 from ai.DistributedObjectAI import DistributedObjectAI
 from direct.distributed.ClockDelta import globalClockDelta
 
-from .DistributedToonInteriorAI import DistributedToonInteriorAI
+from .DistributedToonInteriorAI import DistributedToonInteriorAI, DistributedToonHallInteriorAI
 from .DistributedDoorAI import DistributedDoorAI
 
 from ai.toon import NPCToons
+from ai.ToontownGlobals import ToonHall
 
 
 from direct.fsm.FSM import FSM
@@ -56,11 +57,11 @@ class DistributedBuildingAI(DistributedObjectAI, FSM):
     def enterToon(self):
         self.d_setState('toon')
 
-        # if simbase.config.GetBool('want-new-toonhall', 1) and ZoneUtil.getCanonicalZoneId(interiorZoneId) == ToonHall:
-        #     self.interior = DistributedToonHallInteriorAI.DistributedToonHallInteriorAI(self.block, self.air,
-        #                                                                                 interiorZoneId, self)
-        # else:
-        self.interior = DistributedToonInteriorAI(self.air)
+        if self.interiorZoneId == ToonHall:
+            self.interior = DistributedToonHallInteriorAI(self.air)
+        else:
+            self.interior = DistributedToonInteriorAI(self.air)
+
         self.interior.block = self.block
         self.interior.zoneId = self.interiorZoneId
         self.interior.generateWithRequired(self.interiorZoneId)

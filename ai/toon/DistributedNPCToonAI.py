@@ -99,3 +99,10 @@ class DistributedNPCKartClerkAI(DistributedNPCToonBaseAI):
     def transactionDone(self):
         pass
 
+
+class DistributedNPCFlippyInToonHallAI(DistributedNPCToonAI):
+    pass
+
+
+class DistributedNPCScientistAI(DistributedNPCToonBaseAI):
+    pass

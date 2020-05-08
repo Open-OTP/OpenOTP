@@ -1,16 +1,19 @@
 from otp.util import getPuppetChannel, getAccountChannel
+from direct.showbase.DirectObject import DirectObject
 
 
 from . import AIRepository
 
 from .AIZoneData import AIZoneData
+from typing import Optional
 
 
-class DistributedObjectAI:
+class DistributedObjectAI(DirectObject):
     QUIET_ZONE = 1
-    do_id = None
+    do_id: Optional[int] = None
 
     def __init__(self, air: AIRepository.AIRepository):
+        DirectObject.__init__(self)
         self.air = air
         self.dclass = air.dcFile.namespace[self.__class__.__name__[:-2]]
         self.zoneId = 0
@@ -100,6 +103,7 @@ class DistributedObjectAI:
             self.air = None
             self.zoneId = 0
             self.parentId = 0
+            messenger.send('do-deleted-%d' % self.do_id)
             self.do_id = None
 
     @property
@@ -118,7 +122,7 @@ class DistributedObjectAI:
         self.air.requestDelete(self)
 
     def uniqueName(self, name):
-        return f'{name}={self.do_id}'
+        return f'{name}-{self.do_id}'
 
     def handleChildArrive(self, obj, zoneId):
         pass

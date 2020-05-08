@@ -362,3 +362,7 @@ class AIRepository:
         dg.add_server_header([do.do_id], self.ourChannel, STATESERVER_OBJECT_DELETE_RAM)
         dg.add_uint32(do.do_id)
         self.send(dg)
+
+    @staticmethod
+    def getAvatarExitEvent(avId):
+        return 'do-deleted-%d' % avId
