@@ -2,11 +2,13 @@ from panda3d.core import Point3, Vec3
 import random
 OFF = 0
 FLYING = 1
+LANDED = 2
 NUM_BUTTERFLIES = (6, 36, 5)
 NUM_BUTTERFLY_AREAS = (4, 1, 4)
 BUTTERFLY_SPEED = 2.0
 BUTTERFLY_TAKEOFF = (1.4, 1.8, 1.4)
 BUTTERFLY_LANDING = (1.4, 1.8, 1.4)
+MAX_LANDED_TIME = 20.0
 TTC = 0
 ButterflyPoints = (((Point3(84.0, -116.0, 3.5),
    Point3(95.0, -144.0, 2.6),

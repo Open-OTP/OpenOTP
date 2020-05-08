@@ -4,6 +4,8 @@ from ai.safezone import ButterflyGlobals
 from direct.distributed.ClockDelta import globalClockDelta
 from direct.fsm.FSM import FSM
 
+import random
+
 
 class DistributedButterflyAI(DistributedObjectAI, FSM):
     defaultTransitions = {
@@ -63,3 +65,18 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
         self.curIndex = self.destIndex
         self.request('Landed')
         return task.done
+
+    def enterLanded(self):
+        self.stateIndex = ButterflyGlobals.LANDED
+        self.time = random.random() * ButterflyGlobals.MAX_LANDED_TIME
+        self.d_setState(ButterflyGlobals.LANDED, self.curIndex, self.destIndex, self.time)
+        taskMgr.doMethodLater(self.time, self.__ready, self.uniqueName('butter-ready'))
+
+    def exitLanded(self):
+        taskMgr.remove(self.uniqueName('butter-ready'))
+
+    def __ready(self, task=None):
+        self.destPos, self.destIndex, self.time = ButterflyGlobals.getNextPos(self.curPos, self.playground, self.area, self.ownerId)
+        self.request('Flying')
+        if task:
+            return task.done
