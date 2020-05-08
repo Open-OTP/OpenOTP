@@ -136,12 +136,17 @@ class ToontownProtocol(asyncio.Protocol):
                     await asyncio.sleep(0.01)
                     continue
                 else:
-                    dg = Datagram()
-                    dg.add_bytes(self.buf[:expected])
-                    self.receive_datagram(dg)
-                    del self.buf[:expected]
-                    expected = 0
-                    continue
+                    try:
+                        dg = Datagram()
+                        dg.add_bytes(self.buf[:expected])
+                        self.receive_datagram(dg)
+                        del self.buf[:expected]
+                        expected = 0
+                        continue
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        continue
             elif len(self.buf) > 2:
                 expected = struct.unpack('H', self.buf[:2])[0]
                 del self.buf[:2]
