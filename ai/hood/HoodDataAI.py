@@ -178,7 +178,7 @@ class SafeZoneAI(PlaceAI):
         return zoneId - zoneId % 100 + 500 + block
 
     def create(self):
-        self.dna, self.storage = load_dna_file('dna/' + DNA_MAP[self.zone_id])
+        self.dna, self.storage = load_dna_file('dna/files/' + DNA_MAP[self.zone_id])
 
         for block in self.storage.blocks:
             building_type = self.storage.block_building_types[block]

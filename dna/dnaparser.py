@@ -612,7 +612,7 @@ def load_dna_file(dna_path):
     return tree, storage
 
 
-# tree, storage = load_dna_file('dna/toontown_central_2100.dna')
+# tree, storage = load_dna_file('dna/files/toontown_central_2100.dna')
 #
 # # a = storage.suit_point_map[241]
 # # b = storage.suit_point_map[379]
