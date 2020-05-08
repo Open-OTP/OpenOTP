@@ -10,6 +10,7 @@ BUTTERFLY_TAKEOFF = (1.4, 1.8, 1.4)
 BUTTERFLY_LANDING = (1.4, 1.8, 1.4)
 MAX_LANDED_TIME = 20.0
 TTC = 0
+DG = 1
 ButterflyPoints = (((Point3(84.0, -116.0, 3.5),
    Point3(95.0, -144.0, 2.6),
    Point3(94.0, -145.0, 2.6),

@@ -298,6 +298,10 @@ class MMHoodAI(HoodAI):
 class DGHoodAI(HoodAI):
     zoneId = DaisyGardens
 
+    def startup(self):
+        self.playground.createButterflies(ButterflyGlobals.DG)
+        super().startup()
+
 
 class DLHoodAI(HoodAI):
     zoneId = DonaldsDreamland
