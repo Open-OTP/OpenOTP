@@ -8,7 +8,7 @@ class DistributedDistrictAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
         self.name = ''
-        self.available = False
+        self.available = True
 
     def setName(self, name):
         self.name = name
