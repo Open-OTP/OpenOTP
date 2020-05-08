@@ -2,35 +2,32 @@ import time
 
 from .DistributedObjectAI import DistributedObjectAI
 from ai.toon.DistributedToonAI import DistributedToonAI
+from typing import List, Optional
+from dataslots import with_slots
+from dataclasses import dataclass
 
 
 class DistributedDistrictAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
         self.name = ''
-        self.available = True
-
-    def setName(self, name):
-        self.name = name
+        self.available = False
 
     def d_setName(self, name):
         self.sendUpdate('setName', [name])
 
     def b_setName(self, name):
-        self.setName(name)
+        self.name = name
         self.d_setName(name)
 
     def getName(self):
         return self.name
 
-    def setAvailable(self, available):
-        self.available = available
-
     def d_setAvailable(self, available):
         self.sendUpdate('setAvailable', [available])
 
     def b_setAvailable(self, available):
-        self.setAvailable(available)
+        self.available = available
         self.d_setAvailable(available)
 
     def getAvailable(self):

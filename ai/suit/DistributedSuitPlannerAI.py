@@ -145,7 +145,6 @@ class DistributedSuitPlannerAI(DistributedObjectAI):
             return False
 
         suit = DistributedSuitAI(self.air, self)
-        print(suit.getSPDoId())
         suit.startPoint = startPoint
         suit.flyInSuit = 1
 
@@ -159,7 +158,6 @@ class DistributedSuitPlannerAI(DistributedObjectAI):
         tier = random.choice(tiers)
         department = pickFromFreqList(self.info.deptChances)
         name = suitHeadTypes[department * 8 + tier]
-        print('generated suit:', name, level, suit.path)
         suit.dna = SuitDNA(type='s', name=name, dept=SuitDept(department).char)
         suit.level = level
         suit.initializePath()
@@ -243,7 +241,7 @@ class DistributedSuitPlannerAI(DistributedObjectAI):
 
             if path and not self.pathCollision(path, startTime):
                 suit.endPoint = endPoint
-                print('CHOSEN PATH:', suit.startPoint, endPoint, path)
+                # print('CHOSEN PATH:', suit.startPoint, endPoint, path)
                 suit.path = path
                 return 1
 

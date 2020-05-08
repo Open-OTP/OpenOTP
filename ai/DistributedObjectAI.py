@@ -6,6 +6,7 @@ from . import AIRepository
 
 from .AIZoneData import AIZoneData
 from typing import Optional
+from collections import deque
 
 
 class DistributedObjectAI(DirectObject):
@@ -22,18 +23,25 @@ class DistributedObjectAI(DirectObject):
         self._zoneData = None
 
         self.lastLogicalZoneId = 0
+        self.queueUpdates = True
+        self.updateQueue = deque()
 
     def generateWithRequired(self, zone_id):
         self.zoneId = zone_id
         self.air.generateWithRequired(self, self.air.district.do_id, zone_id)
 
-    def sendUpdate(self, field_name, args):
-        dg = self.dclass.ai_format_update(field_name, self.do_id, self.do_id, self.air.ourChannel, args)
-        self.air.send(dg)
-
     def sendUpdateToChannel(self, channel, field_name, args):
         dg = self.dclass.ai_format_update(field_name, self.do_id, channel, self.air.ourChannel, args)
-        self.air.send(dg)
+        if self.queueUpdates:
+            # Avoid race conditions where stateserver has not subscribed to the doId channel on the message director
+            # so it misses the field update.
+            # print(self.do_id, self.__class__.__name__, 'queueing field update', field_name)
+            self.updateQueue.append(dg)
+        else:
+            self.air.send(dg)
+
+    def sendUpdate(self, field_name, args):
+        self.sendUpdateToChannel(self.do_id, field_name, args)
 
     def sendUpdateToSender(self, field_name, args):
         self.sendUpdateToChannel(self.air.currentSender, field_name, args)
