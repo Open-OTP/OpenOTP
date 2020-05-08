@@ -48,3 +48,18 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
 
     def exitOff(self):
         pass
+
+    def enterFlying(self):
+        self.stateIndex = ButterflyGlobals.FLYING
+        ButterflyGlobals.recycleIndex(self.curIndex, self.playground, self.area, self.ownerId)
+        self.d_setState(ButterflyGlobals.FLYING, self.curIndex, self.destIndex, self.time)
+        taskMgr.doMethodLater(self.time, self.__handleArrival, self.uniqueName('butter-flying'))
+
+    def exitFlying(self):
+        taskMgr.remove(self.uniqueName('butter-flying'))
+
+    def __handleArrival(self, task):
+        self.curPos = self.destPos
+        self.curIndex = self.destIndex
+        self.request('Landed')
+        return task.done

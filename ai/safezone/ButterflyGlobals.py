@@ -1,6 +1,7 @@
 from panda3d.core import Point3, Vec3
 import random
 OFF = 0
+FLYING = 1
 NUM_BUTTERFLIES = (6, 36, 5)
 NUM_BUTTERFLY_AREAS = (4, 1, 4)
 BUTTERFLY_SPEED = 2.0
@@ -226,3 +227,15 @@ def getNextPos(currentPos, playground, area, doId):
     dist = Vec3(nextPos - currentPos).length()
     time = dist / BUTTERFLY_SPEED + BUTTERFLY_TAKEOFF[playground] + BUTTERFLY_LANDING[playground]
     return nextPos, index, time
+
+def recycleIndex(index, playground, area, doId):
+    if doId in allocatedIndexes:
+        unusedI = allocatedIndexes[doId][0][area]
+        usedI = allocatedIndexes[doId][1][area]
+    else:
+        return None
+    if usedI.count(index) > 0:
+        usedI.remove(index)
+    if unusedI.count(index) == 0:
+        unusedI.append(index)
+    return None
