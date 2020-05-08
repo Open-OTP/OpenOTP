@@ -249,6 +249,7 @@ class PlaygroundAI(SafeZoneAI):
         for i in range(0, ButterflyGlobals.NUM_BUTTERFLY_AREAS[playground]):
             for _ in range(0, ButterflyGlobals.NUM_BUTTERFLIES[playground]):
                 butterfly = DistributedButterflyAI(self.air, playground, i, self.zone_id)
+                butterfly.request('Off')
                 butterfly.generateWithRequired(self.zone_id)
                 butterfly.start()
                 self.butterflies.append(butterfly)

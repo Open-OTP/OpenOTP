@@ -38,3 +38,13 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
 
     def start(self):
         self.request('Flying')
+
+    def avatarEnter(self):
+        if self.state == 'Landed':
+            self.__ready()
+
+    def enterOff(self):
+        self.stateIndex = ButterflyGlobals.OFF
+
+    def exitOff(self):
+        pass

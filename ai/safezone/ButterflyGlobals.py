@@ -1,5 +1,6 @@
 from panda3d.core import Point3, Vec3
 import random
+OFF = 0
 NUM_BUTTERFLIES = (6, 36, 5)
 NUM_BUTTERFLY_AREAS = (4, 1, 4)
 BUTTERFLY_SPEED = 2.0
