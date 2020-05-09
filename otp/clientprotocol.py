@@ -281,6 +281,15 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_bytes(dgi.get_remaining())
         self.service.send_datagram(resp)
 
+        if field.name == 'setTalk':
+            # TODO: filtering
+            resp = Datagram()
+            resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
+            resp.add_uint32(do_id)
+            resp.add_uint16(field_number)
+            resp.add_bytes(dgi.get_remaining())
+            self.send_datagram(resp)
+
     def receive_client_location(self, dgi):
         do_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
