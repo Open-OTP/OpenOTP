@@ -15,6 +15,69 @@ import builtins
 import time
 
 
+from direct.showbase.DirectObject import DirectObject
+import math
+from numpy import int16
+
+NetworkTimeBits = 16
+NetworkTimePrecision = 100.0
+NetworkTimeMask = ((1 << NetworkTimeBits) - 1)
+NetworkTimeTopBits = (32 - NetworkTimeBits)
+
+
+class TTClockDelta(DirectObject):
+    def __init__(self):
+        self.globalClock = ClockObject.getGlobalClock()
+        self.delta = 0
+        self.accept('resetClock', self.__resetClock)
+
+    def __resetClock(self, timeDelta):
+        # print('adjusting timebase by %f seconds' % timeDelta))
+        self.delta += timeDelta
+
+    def resynchronize(self, localTime, networkTime):
+        newDelta = (float(localTime) - (float(networkTime) / NetworkTimePrecision))
+        change = (newDelta - self.delta)
+        self.delta = newDelta
+        return self.networkToLocalTime(self.localToNetworkTime(change), 0.0)
+
+    def networkToLocalTime(self, networkTime, now=None):
+        if now is None:
+            now = self.globalClock.getRealTime()
+
+        if self.globalClock.getMode() == ClockObject.MNonRealTime:
+            return now
+
+        ntime = int(math.floor((((now - self.delta) * NetworkTimePrecision) + 0.5)))
+        diff = self.__signExtend((networkTime - ntime))
+        return now + (float(diff) / NetworkTimePrecision)
+
+    def localToNetworkTime(self, localTime, bits=16):
+        ntime = int(math.floor((((localTime - self.delta) * NetworkTimePrecision) + 0.5)))
+        if bits == 16:
+            return self.__signExtend(ntime)
+        else:
+            return ntime
+
+    def getRealNetworkTime(self, *args, bits=16, **kwargs):
+        return self.localToNetworkTime(self.globalClock.getRealTime(), bits)
+
+    def getFrameNetworkTime(self):
+        return self.localToNetworkTime(self.globalClock.getFrameTime())
+
+    def localElapsedTime(self, networkTime):
+        now = self.globalClock.getFrameTime()
+        dt = (now - self.networkToLocalTime(networkTime, now))
+        if dt >= 0.0:
+            return dt
+
+        # print(('negative clock delta: %.3f' % dt))
+        return 0.0
+
+    def __signExtend(self, networkTime):
+        return (int16(networkTime & NetworkTimeMask) << NetworkTimeTopBits) >> NetworkTimeTopBits
+
+
 class AIBase:
     AISleep = 0.01
 
@@ -33,6 +96,7 @@ class AIBase:
         globalClock.tick()
         self.taskMgr.globalClock = globalClock
         builtins.globalClock = globalClock
+        builtins.globalClockDelta = TTClockDelta()
 
         self.hidden = NodePath('hidden')
 

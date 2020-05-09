@@ -1,7 +1,6 @@
 from ai.DistributedObjectAI import DistributedObjectAI
 from ai.safezone import ButterflyGlobals
 
-from direct.distributed.ClockDelta import globalClockDelta
 from direct.fsm.FSM import FSM
 
 import random
@@ -20,7 +19,7 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
         self.playground = playground
         self.area = area
         self.ownerId = ownerId
-        self.stateIndex = -1
+        self.stateIndex = ButterflyGlobals.OFF
         self.curPos, self.curIndex, self.destPos, self.destIndex, self.time = ButterflyGlobals.getFirstRoute(self.playground, self.area, self.ownerId)
 
     def delete(self):
@@ -29,14 +28,11 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
         self.request('Off')
         DistributedObjectAI.delete(self)
 
-    def d_setState(self, stateIndex, curIndex, destIndex, time):
-        self.sendUpdate('setState', [stateIndex, curIndex, destIndex, time, globalClockDelta.getRealNetworkTime()])
-
     def getArea(self):
-        return [self.playground, self.area]
+        return self.playground, self.area
 
     def getState(self):
-        return [self.stateIndex, self.curIndex, self.destIndex, self.time, globalClockDelta.getRealNetworkTime()]
+        return self.stateIndex, self.curIndex, self.destIndex, self.time, globalClockDelta.getRealNetworkTime()
 
     def start(self):
         self.request('Flying')
@@ -54,7 +50,7 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
     def enterFlying(self):
         self.stateIndex = ButterflyGlobals.FLYING
         ButterflyGlobals.recycleIndex(self.curIndex, self.playground, self.area, self.ownerId)
-        self.d_setState(ButterflyGlobals.FLYING, self.curIndex, self.destIndex, self.time)
+        self.sendUpdate('setState', self.getState())
         taskMgr.doMethodLater(self.time, self.__handleArrival, self.uniqueName('butter-flying'))
 
     def exitFlying(self):
@@ -69,7 +65,7 @@ class DistributedButterflyAI(DistributedObjectAI, FSM):
     def enterLanded(self):
         self.stateIndex = ButterflyGlobals.LANDED
         self.time = random.random() * ButterflyGlobals.MAX_LANDED_TIME
-        self.d_setState(ButterflyGlobals.LANDED, self.curIndex, self.destIndex, self.time)
+        self.sendUpdate('setState', self.getState())
         taskMgr.doMethodLater(self.time, self.__ready, self.uniqueName('butter-ready'))
 
     def exitLanded(self):

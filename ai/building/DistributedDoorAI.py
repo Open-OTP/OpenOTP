@@ -11,7 +11,6 @@ DEFAULT_SWING = (OUTWARD_SWING | LEFT_DOOR) | (INWARD_SWING | RIGHT_DOOR)
 
 
 from ai.DistributedObjectAI import DistributedObjectAI
-from direct.distributed.ClockDelta import globalClockDelta
 
 
 UNLOCKED = 0

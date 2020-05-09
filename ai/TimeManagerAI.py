@@ -1,6 +1,5 @@
 import time
 
-from direct.distributed.ClockDelta import globalClockDelta
 
 from .DistributedObjectAI import DistributedObjectAI
 from . import OTPGlobals

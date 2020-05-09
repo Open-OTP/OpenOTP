@@ -3,7 +3,6 @@ from ai.DistributedObjectAI import DistributedObjectAI
 from dataclasses import dataclass
 from dataslots import with_slots
 
-from direct.distributed.ClockDelta import globalClockDelta
 from direct.task.Task import Task
 
 

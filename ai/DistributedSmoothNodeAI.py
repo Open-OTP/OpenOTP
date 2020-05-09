@@ -2,8 +2,6 @@ from .DistributedNodeAI import DistributedNodeAI
 
 from panda3d.direct import CDistributedSmoothNodeBase
 
-from direct.distributed.ClockDelta import globalClockDelta
-
 
 from typing import Optional
 

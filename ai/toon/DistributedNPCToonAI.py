@@ -1,5 +1,4 @@
 from ai.DistributedNodeAI import DistributedNodeAI
-from direct.distributed.ClockDelta import globalClockDelta
 
 
 class DistributedNPCToonBaseAI(DistributedNodeAI):

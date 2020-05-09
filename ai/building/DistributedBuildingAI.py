@@ -1,5 +1,4 @@
 from ai.DistributedObjectAI import DistributedObjectAI
-from direct.distributed.ClockDelta import globalClockDelta
 
 from .DistributedToonInteriorAI import DistributedToonInteriorAI, DistributedToonHallInteriorAI
 from .DistributedDoorAI import DistributedDoorAI

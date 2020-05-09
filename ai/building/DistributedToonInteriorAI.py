@@ -1,7 +1,6 @@
 from ai.DistributedObjectAI import DistributedObjectAI
 
 
-from direct.distributed.ClockDelta import globalClockDelta
 from direct.fsm.FSM import FSM
 
 from ai.toon import NPCToons
