@@ -114,21 +114,170 @@ class DistributedInGameNewsMgrAI(DistributedObjectAI):
         return self.latest_issue
 
 
+@with_slots
+@dataclass
+class WeeklyHoliday:
+    holidayId: int
+    weekday: int
+
+    def __iter__(self):
+        yield self.holidayId
+        yield self.weekday
+
+
+@with_slots
+@dataclass
+class YearlyHoliday:
+    holidayId: int
+    startMonth: int
+    startDay: int
+    endMonth: int
+    endDay: int
+
+    def __iter__(self):
+        yield self.holidayId
+        yield (self.startMonth, self.startDay)
+        yield (self.endMonth, self.endDay)
+
+
+@with_slots
+@dataclass
+class OncelyHoliday:
+    holidayId: int
+    startMonth: int
+    startDay: int
+    endMonth: int
+    endDay: int
+
+    def __iter__(self):
+        yield self.holidayId
+        yield (self.startMonth, self.startDay)
+        yield (self.endMonth, self.endDay)
+
+
+@with_slots
+@dataclass
+class MultipleStartDate:
+    startYear: int
+    startMonth: int
+    startDay: int
+    endYear: int
+    endMonth: int
+    endDay: int
+
+    def __iter__(self):
+        yield (self.startYear, self.startMonth, self.startDay)
+        yield (self.endYear, self.endMonth, self.endDay)
+
+
+class MultipleStartHoliday:
+    __slots__ = 'holidayId', 'times'
+
+    def __init__(self, holidayId: int, times: List[MultipleStartDate]):
+        self.holidayId = holidayId
+        self.times = [tuple(date) for date in times]
+
+    def __iter__(self):
+        yield self.holidayId
+        yield self.times
+
+from ai.HolidayGlobals import *
+
+
 class NewsManagerAI(DistributedObjectAI):
     def __init__(self, air):
         DistributedObjectAI.__init__(self, air)
 
+        self.weeklyHolidays: List[WeeklyHoliday] = []
+        self.yearlyHolidays: List[YearlyHoliday] = []
+        self.oncelyHolidays: List[OncelyHoliday] = []
+        self.multipleStartHolidays: List[MultipleStartHoliday] = []
+        self.relativeHolidays = []
+        self.holidayIds: List[int] = []
+
+        self.holidays = [
+            SillyMeterHolidayAI(self.air)
+        ]
+
+    def announceGenerate(self):
+        for holiday in self.holidays:
+            holiday.start()
+
     def getWeeklyCalendarHolidays(self):
-        return []
+        return [tuple(holiday) for holiday in self.weeklyHolidays]
 
     def getYearlyCalendarHolidays(self):
-        return []
+        return [tuple(holiday) for holiday in self.yearlyHolidays]
 
     def getOncelyCalendarHolidays(self):
-        return []
+        return [tuple(holiday) for holiday in self.oncelyHolidays]
 
+    def getMultipleStartHolidays(self):
+        return [tuple(holiday) for holiday in self.multipleStartHolidays]
+
+    # TODO: figure out how relative holidays work
     def getRelativelyCalendarHolidays(self):
         return []
 
-    def getMultipleStartHolidays(self):
+    def d_setHolidayIdList(self):
+        self.sendUpdate('setHolidayIdList', [self.holidayIds])
+
+
+class HolidayBaseAI:
+    holidayId = None
+
+    def __init__(self, air):
+        self.air = air
+
+    def start(self):
+        self.air.newsManager.holidayIds.append(self.holidayId)
+        self.air.newsManager.d_setHolidayIdList()
+
+    def stop(self):
+        self.air.newsManager.holidayIds.remove(self.holidayId)
+        self.air.newsManager.d_setHolidayIdList()
+
+
+from otp.constants import *
+
+
+class DistributedPhaseEventMgrAI(DistributedObjectAI):
+    def getNumPhases(self):
+        raise NotImplementedError
+
+    def getDates(self):
+        raise NotImplementedError
+
+    def getCurPhase(self):
+        raise NotImplementedError
+
+    def getIsRunning(self):
+        return False
+
+
+class DistributedSillyMeterMgrAI(DistributedPhaseEventMgrAI):
+    def getNumPhases(self):
+        return 15
+
+    def getDates(self):
         return []
+
+    def getCurPhase(self):
+        return 11
+
+    def getIsRunning(self):
+        return 1
+
+
+class SillyMeterHolidayAI(HolidayBaseAI):
+    holidayId = SILLYMETER_HOLIDAY
+
+    def start(self):
+        super().start()
+        self.air.sillyMgr = DistributedSillyMeterMgrAI(self.air)
+        self.air.sillyMgr.generateWithRequired(OTP_ZONE_ID_MANAGEMENT)
+
+    def stop(self):
+        super().stop()
+        self.air.sillyMgr.requestDelete()
+        del self.air.sillyMgr
