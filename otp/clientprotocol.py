@@ -152,6 +152,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.service.log.debug(f'Booted client {self.channel} with index {booted_index} and text: "{booted_text}"')
 
     def connection_lost(self, exc):
+        self.service.log.debug(f'Connection lost to client {self.channel}')
         ToontownProtocol.connection_lost(self, exc)
 
         if self.avatar_id:
@@ -397,9 +398,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
     def receive_create_avatar(self, dgi):
         _ = dgi.get_uint16()
-        dna = dgi.get_string16()
+        dna = dgi.get_blob16()
         pos = dgi.get_uint8()
-        self.service.log.debug(f'Client {self.channel} requesting avatar creation with dna {dna.encode("utf-8")} and pos {pos}.')
+        self.service.log.debug(f'Client {self.channel} requesting avatar creation with dna {dna} and pos {pos}.')
 
         if not 0 <= pos < 6 or self.potential_avatars[pos] is not None:
             self.service.log.debug(f'Client {self.channel} tried creating avatar in invalid position.')
@@ -704,7 +705,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         for i in range(dgi.get_uint16()):
             pot_av = PotentialAvatar(do_id=dgi.get_uint32(), name=dgi.get_string16(), wish_name=dgi.get_string16(),
                                      approved_name=dgi.get_string16(), rejected_name=dgi.get_string16(),
-                                     dna_string=dgi.get_string16(), index=dgi.get_uint8())
+                                     dna_string=dgi.get_blob16(), index=dgi.get_uint8())
 
             avatar_info[pot_av.index] = pot_av
 
