@@ -1,12 +1,31 @@
+GLOBAL_URL_1=http://127.0.0.1:8080/news/
+GLOBAL_URL_3=http://disney.go.com/pirates/online/v1/loadervideo/downloadCover.html
+ 
+ADFRAME_728X90=http://disney.go.com/pirates/online/v1/adframes/memberUI_728x90_adframe.html
+ADFRAME_125X125=http://disney.go.com/pirates/online/v1/adframes/memberUI_125x125_adframe.html
+ 
+BUTTON_1=http://apps.pirates.go.com/pirates/v3/
+BUTTON_2=http://apps.pirates.go.com/pirates/v3/#/community/community_overview.html
+BUTTON_3=http://apps.pirates.go.com/pirates/v3/#/players_guide/introduction.html
+BUTTON_4=http://apps.pirates.go.com/pirates/v3/#/news/releasenotes.html
+BUTTON_5=https://apps.pirates.go.com/pirates/v3/index?pageId=manageAccount
+BUTTON_6=http://apps.pirates.go.com/pirates/v3/#/help/support_overview.html
+BUTTON_7=https://register.go.com/global/pirates/recoverPassword
+BUTTON_8=https://apps.pirates.go.com/pirates/v3/index?pageId=createAccount
+BUTTON_9=http://apps.pirates.go.com/pirates/v3/index?pageId=getUnlimitedAccess
 
-GLOBAL_URL_1=http://127.0.0.1:8080/releaseNotes.html
-GLOBAL_URL_2=http://127.0.0.1:8080/
-GLOBAL_URL_3=http://disney.go.com/toontown/launcher/live/install/LoadMoviePC.html
-BUTTON_2=http://127.0.0.1:8080/
-BUTTON_3=http://127.0.0.1:8080/
-BUTTON_4=http://127.0.0.1:8080/
-BUTTON_5=http://127.0.0.1:8080/
-BUTTON_7=http://127.0.0.1:8080/
-BUTTON_8=http://127.0.0.1:8080/
-WEB_PAGE_LOGIN_RPC=http://127.0.0.1:8080/login
-PATCHER_VERSION_STRING_SERVER=V1.0.1.47
+GAME_ADFRAME_BUTTON_1=http://apps.pirates.go.com/pirates/v3/index?pageId=getUnlimitedAccess
+GAME_ADFRAME_BUTTON_2=http://apps.pirates.go.com/pirates/v3/#/news/currentnews.html
+GAME_ADFRAME_BUTTON_3=http://apps.pirates.go.com/pirates/v3/#/community/community_overview.html 
+GAME_ADFRAME_BUTTON_4=http://apps.pirates.go.com/pirates/v3/#/players_guide/introduction.html
+GAME_ADFRAME_BUTTON_5=http://apps.pirates.go.com/pirates/redirect?redirectId=memopts
+GAME_ADFRAME_BUTTON_6=https://apps.pirates.go.com/pirates/v3/index?pageId=manageAccount
+GAME_ADFRAME_BUTTON_7=http://apps.pirates.go.com/pirates/v3/#/help/support_overview.html
+
+GAME_INGAME_UPGRADE=http://apps.pirates.go.com/pirates/redirect?redirectId=upgrade
+GAME_INGAME_MOREINFO=http://apps.pirates.go.com/pirates/redirect?redirectId=memopts
+GAME_INGAME_NAMING=http://apps.pirates.go.com/pirates/v3/#/help/name_approvals.html
+
+# use this format to push a errorcode to a special page..
+# this example will spawn this page on exit with a value of 13 put in the errcode file
+#WEB_PAGE_APP_ERROR_13=http://www.disney.com/ 

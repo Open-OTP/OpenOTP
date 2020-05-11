@@ -1,31 +1,49 @@
-REQUIRED_INSTALL_FILES=phase_1.mf:2 phase_10.mf:2 phase_11.mf:2 phase_12.mf:2 phase_13.mf:2 phase_2.mf:2 phase_3.5.mf:2 phase_3.mf:2 phase_4.mf:2 phase_5.5.mf:2 phase_5.mf:2 phase_6.mf:2 phase_7.mf:2 phase_8.mf:2 phase_9.mf:2
-FILE_phase_1.mf.current=v1.0.0
-FILE_phase_10.mf.current=v1.0.0
-FILE_phase_11.mf.current=v1.0.0
-FILE_phase_12.mf.current=v1.0.0
-FILE_phase_13.mf.current=v1.0.0
+PATCHER_VERSION_STRING_SERVER=V1.0.1.87
+PATCHER_VERSION_STRING_SERVER_OSX=V1.0.1.87
+DOWNLOAD_PATCHER_CURRENT_VERSION=Launcher1.exe
+DOWNLOAD_PATCHER_CURRENT_VERSION_OSX=PiratesOnline.zip
+GLOBAL_DISPLAYTEXT=PiratesOnline is closed.
+GAME_ENVIRONMENT=LIVE
+
+#GAME_GRAPHICS_API=pandadx9
+GAME_GRAPHICS_API=pandagl
+
+WEB_PAGE_TEMPLAT_BUG=http://disney.go.com/pirates/online/v3/help/reportabug.html
+BUG_SUBMISSION_URL=https://apps.pirates.go.com/logsubmit/post.php?post_form=yes&project=2
+#BUG_SUBMISSION_URL=http://download.piratesonline.com/bugSubmit/forward.php?site=live&post_form=yes
+WEB_PAGE_ALTERNAT_BUG=http://piratesonline.go.com/#/help/feedback.html
+
+#WEB_PAGE_APP_ERROR_LOCAL_12=http://disney.go.com/pirates/online/v3/help/reportabug_sm.html
+#WEB_PAGE_APP_ERROR_LOCAL_SUBMIT_12=http://download.piratesonline.com/bugSubmit/forward.php?site=live&post_form=yes&clientException=1
+
+WEB_PAGE_APP_ERROR_LOCAL_12=http://disney.go.com/pirates/online/v3/help/reportabug_sm.html
+WEB_PAGE_APP_ERROR_LOCAL_SUBMIT_12=https://apps.pirates.go.com/logsubmit/post.php?post_form=yes&project=2&clientException=1
+
+PATCHER_BASE_URL_HEAVY_LIFTING=http://127.0.0.1:8080/
+
+GAME_SERVER=http://127.0.0.1:6667
+PANDA_DOWNLOAD_URL=http://127.0.0.1:8080/
+
+RUN_PIRATES_ADDS=YES
+
+WEB_PAGE_LOGIN_RPC=http://127.0.0.1:8080/login
+
+FUNNEL_LOG=http://download.piratesonline.com/logging/collector.php
+REQUIRED_INSTALL_FILES=phase_2.mf:2 phase_3.mf:0  phase_4.mf:0 phase_5.mf:0 phase_WL.mf:2
+
+
+#FILE_phase_1.mf.current=v1.151
+#FILE_phase_1OSX.mf.current=v1.128
 FILE_phase_2.mf.current=v1.0.0
-FILE_phase_3.5.mf.current=v1.0.0
 FILE_phase_3.mf.current=v1.0.0
 FILE_phase_4.mf.current=v1.0.0
-FILE_phase_5.5.mf.current=v1.0.0
 FILE_phase_5.mf.current=v1.0.0
-FILE_phase_6.mf.current=v1.0.0
-FILE_phase_7.mf.current=v1.0.0
-FILE_phase_8.mf.current=v1.0.0
-FILE_phase_9.mf.current=v1.0.0
-FILE_phase_1.mf.v1.0.0=38508661 d926180cc79f7db64b18f18659d04a26
-FILE_phase_10.mf.v1.0.0=3483147 f3be303a23819ad26257e5bd9140c60c
-FILE_phase_11.mf.v1.0.0=2827958 34f1122e70ac44adf6024e9957586239
-FILE_phase_12.mf.v1.0.0=5289389 2866bba578aa248ce9cad8db3f620d7d
-FILE_phase_13.mf.v1.0.0=5350214 57e67b6d0f779f4cf1ec95d2db9ecb8a
-FILE_phase_2.mf.v1.0.0=22788865 138b4977c9135e1ff2d9d2f695171238
-FILE_phase_3.5.mf.v1.0.0=77729810 629355e55acbddf936a4646903533265
-FILE_phase_3.mf.v1.0.0=7350498 668f133608faa1545646dcb98623f419
-FILE_phase_4.mf.v1.0.0=37877401 d4b34560345b4539926fb292c940cc49
-FILE_phase_5.5.mf.v1.0.0=9663157 768fe861f0fbe11cec07408ebbffdb85
-FILE_phase_5.mf.v1.0.0=37625122 d0fb333849ff6be3f639e0871de74331
-FILE_phase_6.mf.v1.0.0=29430644 63aee39e4fcd07a954c9cbdfd4c0fd69
-FILE_phase_7.mf.v1.0.0=305256 f6eb3d6796582a0e72847a3537741758
-FILE_phase_8.mf.v1.0.0=17516498 9fa0280ecb7e1fa26bd3a12d5db8d369
-FILE_phase_9.mf.v1.0.0=7216258 28c5766200d72ec5ddaa0d98c73e190d
+#FILE_dx9_reqd_dll.mf.current=v1.0
+FILE_phase_WL.mf.current=v1.0.0
+
+
+FILE_phase_2.mf.v1.0.0=52842453 92efa3016202e206e4a427f4950fd5e7
+FILE_phase_3.mf.v1.0.0=65922858 29bbb589ed71250a7aead654be169001
+FILE_phase_4.mf.v1.0.0=191480880 a92628aad52c5a32f36884b28d4d5342
+FILE_phase_5.mf.v1.0.0=121522892 1394308fe0259831345b7b9bf8c7e83f
+FILE_phase_WL.mf.v1.0.0=224837 41e001e6ca378cbf747783f47cb87062

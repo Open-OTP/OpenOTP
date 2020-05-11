@@ -188,6 +188,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             if msgtype == CLIENT_LOGIN_TOONTOWN:
                 self.receive_login(dgi)
                 self.state = ClientState.AUTHENTICATED
+            elif msgtype == CLIENT_LOGIN_3:
+                self.receive_login(dgi)
+                self.state = ClientState.AUTHENTICATED
             else:
                 self.service.log.debug(f'Unexpected message type during handshake {msgtype}.')
         elif self.state == ClientState.AUTHENTICATED:
@@ -759,7 +762,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.subscribe_channel(getAccountChannel(self.account.disl_id))
 
         resp = Datagram()
-        resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
+        resp.add_uint16(CLIENT_LOGIN_3_RESP) #CLIENT_LOGIN_TOONTOWN_RESP)
 
         return_code = 0  # -13 == period expired
         resp.add_uint8(return_code)

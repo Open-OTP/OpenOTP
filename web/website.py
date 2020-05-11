@@ -103,7 +103,7 @@ password_pattern = re.compile(r'[A-Za-z0-9_!@#$%^&*]+')
 async def handle_login(request):
     print(request.method, request.path, request.query)
 
-    username = request.query.get('n')
+    username = request.query.get('username')
 
     if not username:
         return web.Response()
@@ -111,7 +111,7 @@ async def handle_login(request):
     if not username_pattern.match(username):
         return web.Response()
 
-    password = request.query.get('p')
+    password = request.query.get('password')
 
     if not password:
         return web.Response()
@@ -273,6 +273,7 @@ async def init_app():
     app = web.Application()
     app.router.add_get('/patcher.ver', handle_patcher)
     app.router.add_get('/launcher/current/patcher.ver', handle_patcher)
+    app.router.add_get('/launcher/current/patcher.php', handle_patcher)
     app.router.add_get('/twhitelist.dat', handle_whitelist)
 
     app.router.add_get('/launcher/current/patcher.startshow', handle_start_show)
