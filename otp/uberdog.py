@@ -16,7 +16,7 @@ class UberdogProtocol(MDUpstreamProtocol):
         self.subscribe_channel(self.service.GLOBAL_ID)
 
     def receive_datagram(self, dg):
-        self.service.log.debug(f'Received datagram: {dg.get_message().tobytes()}')
+        self.service.log.debug(f'Received datagram: {dg.bytes()}')
         MDUpstreamProtocol.receive_datagram(self, dg)
 
     def handle_datagram(self, dg, dgi):

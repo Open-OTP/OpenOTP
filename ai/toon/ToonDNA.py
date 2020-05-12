@@ -1091,7 +1091,7 @@ class ToonDNA:
             dg.add_uint8(self.headColor)
         else:
             raise Exception(f'unknown avatar type: {self.type}')
-        return dg.get_message().tobytes()
+        return dg.bytes()
 
     @staticmethod
     def makeFromNetString(dgi):

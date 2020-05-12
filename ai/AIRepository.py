@@ -33,7 +33,7 @@ class AIProtocol(ToontownProtocol):
 
     def send_datagram(self, data: Datagram):
         loop = self.service.loop
-        loop.call_soon_threadsafe(self.outgoing_q.put_nowait, data.get_message().tobytes())
+        loop.call_soon_threadsafe(self.outgoing_q.put_nowait, data.bytes())
 
 
 class AIRepository:
@@ -218,6 +218,10 @@ class AIRepository:
             field.receive_update(do, dgi)
         except Exception as e:
             print(f'failed to handle field update: <{field}> from {self.currentAvatarSender}')
+            import traceback
+            traceback.print_exc()
+            dgi.seek(0)
+            print('datagram:', dgi.remaining_bytes())
 
     @property
     def currentAvatarSender(self):

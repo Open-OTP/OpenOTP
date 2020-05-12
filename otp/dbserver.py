@@ -131,7 +131,7 @@ class DBServer(DownstreamMessageDirector):
             av_set[pos] = do_id
             temp.seek(0)
             self.dc.namespace['Account']['ACCOUNT_AV_SET'].pack_value(temp, av_set)
-            await self.backend.set_field(disl_id, 'ACCOUNT_AV_SET', temp.get_message().tobytes(), 'Account')
+            await self.backend.set_field(disl_id, 'ACCOUNT_AV_SET', temp.bytes(), 'Account')
         except OTPCreateFailed as e:
             print('creation failed', e)
             do_id = 0

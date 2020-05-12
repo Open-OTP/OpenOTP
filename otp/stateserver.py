@@ -76,7 +76,7 @@ class DistributedObject(MDParticipant):
 
             dg.add_uint16(count)
             if count:
-                dg.add_bytes(fields_dg.get_message().tobytes())
+                dg.add_bytes(fields_dg.bytes())
 
         else:
             dg.add_uint16(len(self.ram))

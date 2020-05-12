@@ -59,7 +59,7 @@ class MDProtocol(ToontownProtocol, MDParticipant):
             elif msg_type == CONTROL_ADD_POST_REMOVE:
                 post_dg = Datagram()
                 post_dg.add_bytes(dgi.get_bytes(dgi.remaining()))
-                self.service.log.debug(f'Received post remove:{post_dg.get_message().tobytes()}')
+                self.service.log.debug(f'Received post remove:{post_dg.bytes()}')
                 self.post_removes.append(post_dg)
             elif msg_type == CONTROL_CLEAR_POST_REMOVE:
                 del self.post_removes[:]

@@ -146,8 +146,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint16(CLIENT_GO_GET_LOST)
         resp.add_uint16(booted_index)
         resp.add_string16(booted_text.encode('utf-8'))
-        self.transport.write(resp.get_length().to_bytes(2, byteorder='little'))
-        self.transport.write(resp.get_message().tobytes())
+        self.transport.write(len(resp).to_bytes(2, byteorder='little'))
+        self.transport.write(resp.bytes())
         self.transport.close()
         self.service.log.debug(f'Booted client {self.channel} with index {booted_index} and text: "{booted_text}"')
 
@@ -278,7 +278,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_server_header([do_id], self.channel, STATESERVER_OBJECT_UPDATE_FIELD)
         resp.add_uint32(do_id)
         resp.add_uint16(field_number)
-        resp.add_bytes(dgi.get_remaining())
+        resp.add_bytes(dgi.remaining_bytes())
         self.service.send_datagram(resp)
 
         if field.name == 'setTalk':
@@ -287,7 +287,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
             resp.add_uint32(do_id)
             resp.add_uint16(field_number)
-            resp.add_bytes(dgi.get_remaining())
+            resp.add_bytes(dgi.remaining_bytes())
             self.send_datagram(resp)
 
     def receive_client_location(self, dgi):
@@ -726,7 +726,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint16(CLIENT_GET_AVATARS_RESP)
         dgi.seek(pos)
         resp.add_uint8(0)  # Return code
-        resp.add_bytes(dgi.get_remaining())
+        resp.add_bytes(dgi.remaining_bytes())
         self.send_datagram(resp)
 
     def receive_login(self, dgi):
@@ -954,7 +954,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
         resp.add_uint32(do_id)
         resp.add_uint16(field_number)
-        resp.add_bytes(dgi.get_remaining())
+        resp.add_bytes(dgi.remaining_bytes())
 
         self.send_datagram(resp)
 
@@ -970,7 +970,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint16(CLIENT_GET_AVATAR_DETAILS_RESP)
         resp.add_uint32(self.avatar_id)
         resp.add_uint8(0)  # Return code
-        resp.add_bytes(dgi.get_remaining())
+        resp.add_bytes(dgi.remaining_bytes())
         self.send_datagram(resp)
 
     def handle_location_change(self, dgi, sender, do_id):
@@ -1086,7 +1086,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             pending_object = PendingObject(do_id, dc_id, parent_id, zone_id, datagrams=[])
             dg = Datagram()
             dgi.seek(pos)
-            dg.add_bytes(dgi.get_remaining())
+            dg.add_bytes(dgi.remaining_bytes())
             pending_object.datagrams.append(dg)
             self.pending_objects[do_id] = pending_object
 
@@ -1113,7 +1113,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         if do_id in self.pending_objects:
             dgi.seek(pos)
             dg = Datagram()
-            dg.add_bytes(dgi.get_remaining())
+            dg.add_bytes(dgi.remaining_bytes())
             self.pending_objects[do_id].datagrams.append(dg)
             return True
         return False
@@ -1132,7 +1132,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(zone_id)
         resp.add_uint16(dc_id)
         resp.add_uint32(do_id)
-        resp.add_bytes(dgi.get_remaining())
+        resp.add_bytes(dgi.remaining_bytes())
         self.send_datagram(resp)
 
     def get_potential_avatar(self, av_id):
