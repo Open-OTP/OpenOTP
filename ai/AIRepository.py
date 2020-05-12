@@ -19,6 +19,8 @@ import asyncio
 
 from . import AIZoneData
 
+from .ToontownGlobals import DynamicZonesBegin, DynamicZonesEnd
+
 
 class AIProtocol(ToontownProtocol):
     def connection_made(self, transport):
@@ -45,6 +47,7 @@ class AIRepository:
 
         max_channels = 1000000
         self.channelAllocator = UniqueIdAllocator(base_channel, base_channel + max_channels - 1)
+        self.zoneAllocator = UniqueIdAllocator(DynamicZonesBegin, DynamicZonesEnd)
 
         self._registedChannels = set()
 
@@ -388,3 +391,9 @@ class AIRepository:
     @staticmethod
     def getAvatarExitEvent(avId):
         return 'do-deleted-%d' % avId
+
+    def allocateZone(self):
+        return self.zoneAllocator.allocate()
+
+    def deallocateZone(self, zone):
+        self.zoneAllocator.free(zone)

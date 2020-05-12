@@ -1,6 +1,7 @@
 from ai.DistributedObjectAI import DistributedObjectAI
 from ai.DistributedSmoothNodeAI import DistributedSmoothNodeAI
 from otp.util import getPuppetChannel
+from dc.util import Datagram
 
 
 class DistributedAvatarAI(DistributedSmoothNodeAI):
@@ -60,6 +61,14 @@ class DistributedToonAI(DistributedPlayerAI):
         DistributedPlayerAI.__init__(self, air)
 
         self.dnaString = ''
+        self.hp = 15
+        self.maxMoney = 40
+        self.money = 0
+        self.bankMoney = 0
+        self.maxBankMoney = 1000
+        self.trackAccess = [0, 0, 0, 0, 1, 1, 0]
+        self.experience = Experience()
+        self.inventory = Inventory()
 
     def setDNAString(self, dnaString):
         self.dnaString = dnaString
@@ -70,17 +79,57 @@ class DistributedToonAI(DistributedPlayerAI):
     def getGM(self):
         return False
 
+    def setMaxBankMoney(self, money):
+        self.maxBankMoney = money
+
     def getMaxBankMoney(self):
-        return 0
+        return self.maxBankMoney
+
+    def setBankMoney(self, money):
+        self.bankMoney = money
 
     def getBankMoney(self):
-        return 0
+        return self.bankMoney
+
+    def setMaxMoney(self, maxMoney):
+        self.maxMoney = maxMoney
 
     def getMaxMoney(self):
-        return 0
+        return self.maxMoney
+
+    def setMoney(self, money):
+        self.money = money
 
     def getMoney(self):
-        return 0
+        return self.money
+
+    def d_setMoney(self, money):
+        self.sendUpdate('setMoney', [money])
+
+    def b_setMoney(self, money):
+        self.setMoney(money)
+        self.d_setMoney(money)
+
+    def takeMoney(self, deltaMoney, useBank=True):
+        totalMoney = self.money + (self.bankMoney if useBank else 0)
+        if deltaMoney > totalMoney:
+            return False
+
+        if useBank and deltaMoney > self.money:
+            self.b_setBankMoney(self.bankMoney - (deltaMoney - self.money))
+            self.b_setMoney(0)
+        else:
+            self.b_setMoney(self.money - deltaMoney)
+        return True
+
+    def addMoney(self, deltaMoney):
+        money = deltaMoney + self.money
+        pocketMoney = min(money, self.maxMoney)
+        self.b_setMoney(pocketMoney)
+        overflowMoney = money - self.maxMoney
+        if overflowMoney > 0:
+            bankMoney = self.bankMoney + overflowMoney
+            self.b_setBankMoney(bankMoney)
 
     def getMaxHp(self):
         return 15
@@ -91,14 +140,24 @@ class DistributedToonAI(DistributedPlayerAI):
     def getBattleId(self):
         return 0
 
+    def setExperience(self, experience):
+        self.experience = Experience.fromBytes(experience)
+        self.experience.toon = self
+
     def getExperience(self):
-        return b'\x00\x00' * 7
+        return self.experience.makeNetString()
 
     def getMaxCarry(self):
         return 20
 
+    def setTrackAccess(self, trackAccess):
+        self.trackAccess = trackAccess
+
     def getTrackAccess(self):
-        return [0, 0, 0, 0, 1, 1, 0]
+        return self.trackAccess
+
+    def hasTrackAccess(self, track):
+        return self.trackAccess[track] > 0
 
     def getTrackProgress(self):
         return 0, 0
@@ -106,8 +165,15 @@ class DistributedToonAI(DistributedPlayerAI):
     def getTrackBonusLevel(self):
         return [0, 0, 0, 0, 0, 0, 0]
 
+    def setInventory(self, inventory):
+        self.inventory = Inventory.fromBytes(inventory)
+        self.inventory.toon = self
+
     def getInventory(self):
-        return b''
+        return self.inventory.makeNetString()
+
+    def d_setInventory(self, blob):
+        self.sendUpdate('setInventory', [blob])
 
     def getMaxNPCFriends(self):
         return 8
@@ -396,3 +462,248 @@ class DistributedToonAI(DistributedPlayerAI):
                 # Playground visgroup, ignore
                 return
             self.air.setInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0, self.parentId, visibles)
+
+
+NUM_TRACKS = 7
+UBER_INDEX = 6
+NUM_PROPS = 7
+
+Levels = [
+    [0, 20, 200, 800, 2000, 6000, 10000],
+    [0, 20, 100, 800, 2000, 6000, 10000],
+    [0, 20, 100, 800, 2000, 6000, 10000],
+    [0, 40, 200, 1000, 2500, 7500, 10000],
+    [0, 10, 50, 400, 2000, 6000, 10000],
+    [0, 10, 50, 400, 2000, 6000, 10000],
+    [0, 20, 100, 500, 2000, 6000, 10000]
+]
+
+CarryLimits = (
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    ),
+    (
+        (5, 0, 0, 0, 0, 0, 0),
+        (7, 3, 0, 0, 0, 0, 0),
+        (10, 7, 3, 0, 0, 0, 0),
+        (15, 10, 7, 3, 0, 0, 0),
+        (15, 15, 10, 5, 3, 0, 0),
+        (20, 15, 15, 10, 5, 2, 0),
+        (20, 15, 15, 10, 5, 2, 1)),
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    ),
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    ),
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    ),
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    ),
+    (
+        (10, 0, 0, 0, 0, 0, 0),
+        (10, 5, 0, 0, 0, 0, 0),
+        (15, 10, 5, 0, 0, 0, 0),
+        (20, 15, 10, 5, 0, 0, 0),
+        (25, 20, 15, 10, 3, 0, 0),
+        (30, 25, 20, 15, 7, 3, 0),
+        (30, 25, 20, 15, 7, 3, 1)
+    )
+)
+
+regMaxSkill = 10000
+UberSkill = 500
+MaxSkill = UberSkill + regMaxSkill
+UnpaidMaxSkills = [Levels[0][1] - 1,
+ Levels[1][1] - 1,
+ Levels[2][1] - 1,
+ Levels[3][1] - 1,
+ Levels[4][4] - 1,
+ Levels[5][4] - 1,
+ Levels[6][1] - 1]
+ExperienceCap = 200
+
+
+class Inventory:
+    __slots__ = 'inventory', 'toon'
+
+    def __init__(self, inventory=None, toon=None):
+        if not inventory:
+            self.inventory = [0] * NUM_TRACKS * NUM_PROPS
+        else:
+            self.inventory = inventory
+
+        self.toon = toon
+
+    def __getitem__(self, key):
+        if not type(key) == int:
+            raise IndexError
+
+        return self.inventory[key]
+
+    def __iter__(self):
+        yield from self.inventory
+
+    @property
+    def totalProps(self):
+        return sum(self.inventory)
+
+    def get(self, track, level):
+        return self[track * NUM_TRACKS + level]
+
+    def getMax(self, track, level):
+        if self.toon.experience:
+            return CarryLimits[track][self.toon.experience.getExpLevel(track)][level]
+        else:
+            return 0
+
+    def addItems(self, track, level, amount):
+        if not self.toon.hasTrackAccess(track):
+            return
+
+        if self.toon.experience.getExpLevel(track) < level:
+            return
+
+        if self.totalProps + amount > self.toon.getMaxCarry() and level < 6:
+            return
+
+        self[track * NUM_TRACKS + level] += amount
+        return self[track * NUM_TRACKS + level]
+
+    def validatePurchase(self, newInventory, currentMoney, newMoney):
+        if newMoney > currentMoney:
+            return False
+
+        newTotal = newInventory.totalProps
+        oldTotal = self.totalProps
+
+        if newTotal > oldTotal + currentMoney:
+            return False
+
+        if newTotal - oldTotal > currentMoney - newMoney:
+            return False
+
+        if newTotal > self.toon.getMaxCarry():
+            print('more than max carry')
+            return False
+
+        for i in range(0, NUM_TRACKS * NUM_PROPS, UBER_INDEX):
+            if newInventory[i] > self[i]:
+                # Can't buy level 7 gags.
+                print('tried buying uber')
+                return False
+
+        if not newInventory.validateItems():
+            return False
+
+        # TODO: check access
+
+        return True
+
+    def validateItems(self):
+        for index, amount in enumerate(self):
+            track, level = index // NUM_TRACKS, index % NUM_PROPS
+
+            if not self.toon.hasTrackAccess(track) and amount:
+                print('no track acccess and tried to buy')
+                return False
+
+            if amount > self.getMax(track, level):
+                print('over max')
+                return False
+
+        return True
+
+
+    @staticmethod
+    def fromBytes(data):
+        return Inventory.fromNetString(Datagram(data).iterator())
+
+    @staticmethod
+    def fromNetString(dgi):
+        return Inventory([dgi.get_uint8() for _ in range(NUM_TRACKS * NUM_PROPS)])
+
+    def makeNetString(self):
+        return b''.join((prop.to_bytes(1, 'little') for prop in self.inventory))
+
+
+from ai import OTPGlobals
+
+
+class Experience:
+    __slots__ = 'experience', 'toon'
+
+    def __init__(self, experience=None, toon=None):
+        if not experience:
+            self.experience = [0] * NUM_TRACKS
+        else:
+            self.experience = experience
+
+        self.toon = toon
+
+    def __getitem__(self, key):
+        if not type(key) == int:
+            raise IndexError
+
+        return self.experience[key]
+
+    @staticmethod
+    def fromBytes(data):
+        return Experience.fromNetString(Datagram(data).iterator())
+
+    @staticmethod
+    def fromNetString(dgi):
+        return Experience([dgi.get_uint16() for _ in range(NUM_TRACKS)])
+
+    def makeNetString(self):
+        return b''.join((trackExp.to_bytes(2, 'little') for trackExp in self.experience))
+
+    def addExp(self, track, amount=1):
+        current = self.experience[track]
+
+        if self.toon.getAccess() == OTPGlobals.AccessFull:
+            maxExp = MaxSkill
+        else:
+            maxExp = UnpaidMaxSkills[track]
+
+        self.experience[track] = min(current + amount, maxExp)
+
+    def getExpLevel(self, track):
+        xp = self[track]
+        for amount in Levels[track]:
+            if xp < amount:
+                return max(Levels[track].index(amount) - 1, 0)
+        else:
+            return NUM_PROPS - 1

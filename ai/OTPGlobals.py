@@ -18,3 +18,8 @@ SPHidden = 1
 SPRender = 2
 SPDynamic = 5
 AICollisionPriority = 10
+
+AccessUnknown = 0
+AccessVelvetRope = 1
+AccessFull = 2
+AccessInvalid = 3

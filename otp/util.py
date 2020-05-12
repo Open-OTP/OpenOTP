@@ -12,7 +12,7 @@ DEFAULT_TOON = {
 
     "setDNAString": ('t\x1b\x01\x01\x01\x12\x05\x0c\x05\x03\x05\x10\x00\x12\x11',),
     "setGM": (False,),
-    "setMaxBankMoney": (0,),
+    "setMaxBankMoney": (1000,),
     "setBankMoney": (0,),
     "setMaxMoney": (0,),
     "setMoney": (0,),
@@ -24,7 +24,7 @@ DEFAULT_TOON = {
     "setTrackAccess": ([0, 0, 0, 0, 1, 1, 0],),
     "setTrackProgress": (0, 0,),
     "setTrackBonusLevel": ([0, 0, 0, 0, 0, 0, 0],),
-    "setInventory": (b'',),
+    "setInventory": (b'\x00' * 49,),
     "setMaxNPCFriends": (8,),
     "setNPCFriendsDict": ([],),
     "setDefaultShard": (0,),

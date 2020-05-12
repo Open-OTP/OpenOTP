@@ -6,6 +6,7 @@ from dna.objects import DNAGroup
 from ai.toon import NPCToons
 from ai.safezone import ButterflyGlobals
 from ai.safezone.DistributedButterflyAI import DistributedButterflyAI
+from ai.trolley.DistributedTrolleyAI import DistributedTrolleyAI
 from ai.suit.DistributedSuitPlannerAI import DistributedSuitPlannerAI
 
 DNA_MAP = {
@@ -236,12 +237,15 @@ class PlaygroundAI(SafeZoneAI):
         SafeZoneAI.__init__(self, air, zone_id)
         self.npcs = []
         self.butterflies = []
+        self.trolley: Optional[DistributedTrolleyAI] = None
 
     def create(self):
         super().create()
 
         self.npcs = NPCToons.createNpcsInZone(self.air, self.zone_id)
         # TODO: trolley, butterflys, disney npc
+        self.trolley = DistributedTrolleyAI(self.air)
+        self.trolley.generateWithRequired(self.zone_id)
 
     def createButterflies(self, playground):
         ButterflyGlobals.generateIndexes(self.zone_id, playground)
