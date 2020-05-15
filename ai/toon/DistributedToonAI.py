@@ -62,6 +62,7 @@ class DistributedToonAI(DistributedPlayerAI):
 
         self.dnaString = ''
         self.hp = 15
+        self.maxHp = 15
         self.maxMoney = 40
         self.money = 0
         self.bankMoney = 0
@@ -131,11 +132,36 @@ class DistributedToonAI(DistributedPlayerAI):
             bankMoney = self.bankMoney + overflowMoney
             self.b_setBankMoney(bankMoney)
 
+    def setMaxHp(self, hp):
+        self.maxHp = hp
+
     def getMaxHp(self):
-        return 15
+        return self.maxHp
+
+    def setHp(self, hp):
+        self.hp = hp
 
     def getHp(self):
-        return 15
+        return self.hp
+
+    def d_setHp(self, hp):
+        self.sendUpdate('setHp', [hp])
+
+    def b_setHp(self, hp):
+        self.setHp(hp)
+        self.d_setHp(hp)
+
+    def toonUp(self, hpGained, quietly=0, sendTotal=1):
+        hpGained = min(self.maxHp, hpGained)
+        if not quietly:
+            self.sendUpdate('toonUp', [hpGained])
+        if self.hp + hpGained <= 0:
+            self.hp += hpGained
+        else:
+            self.hp = max(self.hp, 0) + hpGained
+        clampedHp = min(self.hp, self.maxHp)
+        if sendTotal:
+            self.d_setHp(clampedHp)
 
     def getBattleId(self):
         return 0

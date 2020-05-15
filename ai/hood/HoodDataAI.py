@@ -8,6 +8,9 @@ from ai.safezone import ButterflyGlobals
 from ai.safezone.DistributedButterflyAI import DistributedButterflyAI
 from ai.trolley.DistributedTrolleyAI import DistributedTrolleyAI
 from ai.suit.DistributedSuitPlannerAI import DistributedSuitPlannerAI
+from .Treasures import *
+from typing import Type
+
 
 DNA_MAP = {
     DonaldsDock: 'donalds_dock_sz.dna',
@@ -233,11 +236,14 @@ class StreetAI(SafeZoneAI):
 
 
 class PlaygroundAI(SafeZoneAI):
+    treasurePlannerClass: Optional[Type[RegenTreasurePlanner]] = None
+
     def __init__(self, air, zone_id):
         SafeZoneAI.__init__(self, air, zone_id)
         self.npcs = []
         self.butterflies = []
         self.trolley: Optional[DistributedTrolleyAI] = None
+        self.treasurePlanner: Optional[RegenTreasurePlanner] = None
 
     def create(self):
         super().create()
@@ -246,6 +252,10 @@ class PlaygroundAI(SafeZoneAI):
         # TODO: trolley, butterflys, disney npc
         self.trolley = DistributedTrolleyAI(self.air)
         self.trolley.generateWithRequired(self.zone_id)
+
+        if self.treasurePlannerClass is not None:
+            self.treasurePlanner = self.treasurePlannerClass(self.zone_id)
+            self.treasurePlanner.start()
 
     def createButterflies(self, playground):
         ButterflyGlobals.generateIndexes(self.zone_id, playground)
@@ -279,11 +289,16 @@ class HoodAI:
 class DDHoodAI(HoodAI):
     zoneId = DonaldsDock
 
+    def startup(self):
+        self.playground.treasurePlannerClass = DDTreasurePlanner
+        super().startup()
+
 
 class TTHoodAI(HoodAI):
     zoneId = ToontownCentral
 
     def startup(self):
+        self.playground.treasurePlannerClass = TTTreasurePlanner
         self.playground.createButterflies(ButterflyGlobals.TTC)
         for street in self.streets:
             street.wantSuits = True
@@ -293,18 +308,31 @@ class TTHoodAI(HoodAI):
 class BRHoodAI(HoodAI):
     zoneId = TheBrrrgh
 
+    def startup(self):
+        self.playground.treasurePlannerClass = BRTreasurePlanner
+        super().startup()
+
 
 class MMHoodAI(HoodAI):
     zoneId = MinniesMelodyland
+
+    def startup(self):
+        self.playground.treasurePlannerClass = MMTreasurePlanner
+        super().startup()
 
 
 class DGHoodAI(HoodAI):
     zoneId = DaisyGardens
 
     def startup(self):
+        self.playground.treasurePlannerClass = DGTreasurePlanner
         self.playground.createButterflies(ButterflyGlobals.DG)
         super().startup()
 
 
 class DLHoodAI(HoodAI):
     zoneId = DonaldsDreamland
+
+    def startup(self):
+        self.playground.treasurePlannerClass = DLTreasurePlanner
+        super().startup()
