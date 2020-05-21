@@ -85,11 +85,12 @@ class DownstreamClient:
 
 
 class DatagramFuture(Future):
-    def __init__(self, loop, msg_id, sender=None):
+    def __init__(self, loop, msg_id, sender=None, context=None):
         Future.__init__(self, loop=loop)
 
         self.future_msg_id = msg_id
         self.future_sender = sender
+        self.context = context
 
 
 class ToontownProtocol(asyncio.Protocol):

@@ -108,6 +108,8 @@ class DistributedObjectAI(DirectObject):
     def delete(self):
         if self.air:
             self.releaseZoneData()
+            if self.do_id and self.air.minChannel <= self.do_id <= self.air.maxChannel:
+                self.air.deallocateChannel(self.do_id)
             self.air = None
             self.zoneId = 0
             self.parentId = 0

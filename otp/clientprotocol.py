@@ -129,6 +129,9 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.visible_objects: Dict[int, ObjectInfo] = {}
         self.owned_objects: Dict[int, ObjectInfo] = {}
 
+        # TODO: make this configurable
+        self.uberdogs: List[int] = [OTP_DO_ID_FRIEND_MANAGER]
+
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
         self.created_av_id: int = 0
@@ -913,6 +916,8 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 queued = self.queue_pending(do_id, dgi, pos)
                 if queued:
                     self.service.log.debug(f'Queued field update for pending object {do_id}.')
+                else:
+                    self.service.log.debug(f'Got update for unknown object {do_id}.')
                 return
 
             self.handle_update_field(dgi, sender, do_id)
@@ -935,6 +940,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.receive_add_interest(dgi, ai=True)
         elif msgtype == CLIENT_AGENT_REMOVE_INTEREST:
             self.receive_remove_interest(dgi, ai=True)
+        elif msgtype in {CLIENT_FRIEND_ONLINE, CLIENT_FRIEND_OFFLINE, CLIENT_GET_FRIEND_LIST_RESP}:
+            dg = Datagram()
+            dg.add_uint16(msgtype)
+            dg.add_bytes(dgi.remaining_bytes())
+            self.send_datagram(dg)
         else:
            self.service.log.debug(f'Client {self.channel} received unhandled upstream msg {msgtype}.')
 
@@ -1107,7 +1117,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
                 yield interest
 
     def object_exists(self, do_id):
-        return do_id in self.visible_objects or do_id in self.owned_objects
+        return do_id in self.visible_objects or do_id in self.owned_objects or do_id in self.uberdogs
 
     def queue_pending(self, do_id, dgi, pos):
         if do_id in self.pending_objects:

@@ -2,9 +2,13 @@ import time
 
 from .DistributedObjectAI import DistributedObjectAI
 from ai.toon.DistributedToonAI import DistributedToonAI
-from typing import List, Optional
+from typing import List, Optional, Dict
 from dataslots import with_slots
 from dataclasses import dataclass
+
+from dc.util import Datagram
+from otp.util import getPuppetChannel
+from otp.messagetypes import CLIENT_FRIEND_ONLINE
 
 
 class DistributedDistrictAI(DistributedObjectAI):
@@ -281,3 +285,144 @@ class SillyMeterHolidayAI(HolidayBaseAI):
         super().stop()
         self.air.sillyMgr.requestDelete()
         del self.air.sillyMgr
+
+
+from .DistributedObjectGlobalAI import DistributedObjectGlobalAI
+
+
+class FriendRequest:
+    CANCELLED = -1
+    INACTIVE = 0
+    FRIEND_QUERY = 1
+    FRIEND_CONSIDERING = 2
+
+    def __init__(self, avId, requestedId, state):
+        self.avId = avId
+        self.requestedId = requestedId
+        self.state = state
+
+    @property
+    def cancelled(self):
+        return self.state == FriendRequest.CANCELLED
+
+    def isRequestedId(self, avId):
+        return avId == self.requestedId
+
+
+class InviteeResponse:
+    NOT_AVAILABLE = 0
+    ASKING = 1
+    ALREADY_FRIENDS = 2
+    SELF_FRIEND = 3
+    IGNORED = 4
+    NO_NEW_FRIENDS = 6
+    NO = 10
+    TOO_MANY_FRIENDS = 13
+
+
+MAX_FRIENDS = 50
+MAX_PLAYER_FRIENDS = 300
+
+
+class FriendManagerAI(DistributedObjectGlobalAI):
+    do_id = OTP_DO_ID_FRIEND_MANAGER
+
+    def __init__(self, air):
+        DistributedObjectGlobalAI.__init__(self, air)
+        self.requests: Dict[int, FriendRequest] = {}
+        self._context = 0
+
+    @property
+    def next_context(self):
+        self._context = (self._context + 1) & 0xFFFFFFFF
+        return self._context
+
+    def friendQuery(self, requested):
+        avId = self.air.currentAvatarSender
+        if requested not in self.air.doTable:
+            return
+        av = self.air.doTable.get(avId)
+        if not av:
+            return
+        context = self.next_context
+        self.requests[context] = FriendRequest(avId, requested, FriendRequest.FRIEND_QUERY)
+        self.sendUpdateToAvatar(requested, 'inviteeFriendQuery', [avId, av.getName(), av.getDNAString(), context])
+
+    def cancelFriendQuery(self, context):
+        avId = self.air.currentAvatarSender
+        if avId not in self.air.doTable:
+            return
+
+        request = self.requests.get(context)
+        if not request or avId != request.avId:
+            return
+        request.state = FriendRequest.CANCELLED
+        self.sendUpdateToAvatar(request.requestedId, 'inviteeCancelFriendQuery', [context])
+
+    def inviteeFriendConsidering(self, response, context):
+        avId = self.air.currentAvatarSender
+        av = self.air.doTable.get(avId)
+        if not av:
+            return
+
+        request = self.requests.get(context)
+        if not request:
+            return
+
+        if not request.isRequestedId(avId):
+            return
+
+        if request.state != FriendRequest.FRIEND_QUERY:
+            return
+
+        if response != InviteeResponse.ASKING:
+            request.state = FriendRequest.CANCELLED
+            del self.requests[context]
+        else:
+            request.state = FriendRequest.FRIEND_CONSIDERING
+
+        self.sendUpdateToAvatar(request.avId, 'friendConsidering', [response, context])
+
+    def inviteeFriendResponse(self, response, context):
+        avId = self.air.currentAvatarSender
+        requested = self.air.doTable.get(avId)
+        if not requested:
+            return
+
+        request = self.requests.get(context)
+        if not request:
+            return
+
+        if not request.isRequestedId(avId):
+            return
+
+        if request.state != FriendRequest.FRIEND_CONSIDERING:
+            return
+
+        self.sendUpdateToAvatar(request.avId, 'friendResponse', [response, context])
+
+        if response == 1:
+            requester = self.air.doTable.get(request.avId)
+
+            if not (requested and requester):
+                # Likely they logged off just before a response was sent. RIP.
+                return
+
+            requested.extendFriendsList(requester.do_id, False)
+            requester.extendFriendsList(requested.do_id, False)
+
+            requested.d_setFriendsList(requested.getFriendsList())
+            requester.d_setFriendsList(requester.getFriendsList())
+
+            taskMgr.doMethodLater(1, self.sendFriendOnline, f'send-online-{requested.do_id}-{requester.do_id}',
+                                  extraArgs=[requested.do_id, requester.do_id])
+            taskMgr.doMethodLater(1, self.sendFriendOnline, f'send-online-{requester.do_id}-{requested.do_id}',
+                                  extraArgs=[requester.do_id, requested.do_id])
+
+    def sendFriendOnline(self, avId, otherAvId):
+        # Need this delay so that `setFriendsList` is set first to avoid
+        # the online whisper message.
+        dg = Datagram()
+        dg.add_server_header([getPuppetChannel(avId)], self.air.ourChannel, CLIENT_FRIEND_ONLINE)
+        dg.add_uint32(otherAvId)
+        self.air.send(dg)

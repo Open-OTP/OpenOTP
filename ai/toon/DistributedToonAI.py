@@ -14,7 +14,15 @@ class DistributedAvatarAI(DistributedSmoothNodeAI):
         self.name = name
 
     def getName(self):
-        return 'Toon'
+        return self.name
+
+
+from typing import NamedTuple, List
+
+
+class FriendEntry(NamedTuple):
+    doId: int
+    trueFriend: bool
 
 
 class DistributedPlayerAI(DistributedAvatarAI):
@@ -24,6 +32,7 @@ class DistributedPlayerAI(DistributedAvatarAI):
         self.accountName = ''
         self.DISLid = 0
         self.access = 0
+        self.friendsList: List[FriendEntry] = []
 
     def setAccountName(self, name):
         self.accountName = name
@@ -32,7 +41,10 @@ class DistributedPlayerAI(DistributedAvatarAI):
         return self.accountName
 
     def getFriendsList(self):
-        return []
+        return self.friendsList
+
+    def d_setFriendsList(self, friendsList: List[FriendEntry]):
+        self.sendUpdate('setFriendsList', [friendsList])
 
     def setDISLid(self, DISLid):
         self.DISLid = DISLid
@@ -52,6 +64,14 @@ class DistributedPlayerAI(DistributedAvatarAI):
 
     def getAsGM(self):
         return False
+
+    def extendFriendsList(self, friendId: int, trueFriend: bool):
+        for i, entry in enumerate(self.friendsList):
+            if entry.doId == friendId:
+                self.friendsList[i] = FriendEntry(friendId, trueFriend)
+                return
+
+        self.friendsList.append(FriendEntry(friendId, trueFriend))
 
 
 class DistributedToonAI(DistributedPlayerAI):

@@ -46,7 +46,9 @@ class AIRepository:
         base_channel = 4000000
 
         max_channels = 1000000
-        self.channelAllocator = UniqueIdAllocator(base_channel, base_channel + max_channels - 1)
+        self.minChannel = base_channel
+        self.maxChannel = base_channel + max_channels
+        self.channelAllocator = UniqueIdAllocator(self.minChannel, self.maxChannel)
         self.zoneAllocator = UniqueIdAllocator(DynamicZonesBegin, DynamicZonesEnd)
 
         self._registedChannels = set()
@@ -322,7 +324,7 @@ class AIRepository:
     def createObjects(self):
         self.registerForChannel(self.ourChannel)
 
-        from .Objects import ToontownDistrictAI, ToontownDistrictStatsAI, DistributedInGameNewsMgrAI, NewsManagerAI
+        from .Objects import ToontownDistrictAI, ToontownDistrictStatsAI, DistributedInGameNewsMgrAI, NewsManagerAI, FriendManagerAI
         from .TimeManagerAI import TimeManagerAI
 
         self.district = ToontownDistrictAI(self)
@@ -359,6 +361,9 @@ class AIRepository:
 
         self.newsManager = NewsManagerAI(self)
         self.newsManager.generateWithRequired(OTP_ZONE_ID_MANAGEMENT)
+
+        self.friendManager = FriendManagerAI(self)
+        self.friendManager.generateGlobalObject(OTP_ZONE_ID_MANAGEMENT)
 
         self.loadZones()
 
@@ -397,3 +402,4 @@ class AIRepository:
 
     def deallocateZone(self, zone):
         self.zoneAllocator.free(zone)
+

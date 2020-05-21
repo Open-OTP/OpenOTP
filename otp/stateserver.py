@@ -416,6 +416,28 @@ class StateServerProtocol(MDUpstreamProtocol):
             self.activate_callback(dgi)
         elif msgtype == STATESERVER_SHARD_REST:
             self.handle_shard_rest(dgi)
+        elif msgtype == STATESERVER_OBJECT_LOCATE:
+            context = dgi.get_uint32()
+            do_id = dgi.get_uint32()
+
+            do = self.service.objects.get(do_id)
+
+            resp = Datagram()
+            resp.add_server_header([sender], do_id, STATESERVER_OBJECT_LOCATE_RESP)
+            resp.add_uint32(context)
+            resp.add_uint32(do_id)
+
+            if do is None:
+                resp.add_uint8(False)
+                self.service.send_datagram(resp)
+            else:
+                resp.add_uint8(True)
+                parent_id, zone_id = do.parent_id, do.zone_id
+                resp.add_uint32(parent_id)
+                resp.add_uint32(zone_id)
+                ai_channel = do.ai_channel if do.ai_channel else 0
+                resp.add_uint32(ai_channel)
+                self.service.send_datagram(resp)
 
     def handle_db_generate(self, dgi, sender, other=False):
         do_id = dgi.get_uint32()
