@@ -66,7 +66,7 @@ MinigamePlayerMatrix = {
 
 def createMinigame(air, players: List[int], newbies: List[int], trolleyZone: int, zone: Optional[int] = None):
     if zone is None:
-        zone = air.allocateZone()
+        zone = acquireZone()
 
     from . import DistributedTagGameAI
     mg = DistributedTagGameAI.DistributedTagGameAI(air, players, trolleyZone)
@@ -74,3 +74,23 @@ def createMinigame(air, players: List[int], newbies: List[int], trolleyZone: int
     mg.generateWithRequired(zone)
 
     return zone, mg.MINIGAME_ID
+
+
+MINIGAME_ZONES = {}
+
+
+def acquireZone():
+    zone = simbase.air.allocateZone()
+    MINIGAME_ZONES[zone] = 1
+    return zone
+
+
+def incZoneRef(zoneId):
+    MINIGAME_ZONES[zoneId] += 1
+
+
+def decZoneRef(zoneId):
+    MINIGAME_ZONES[zoneId] -= 1
+    if MINIGAME_ZONES[zoneId] <= 0:
+        simbase.air.deallocateZone(zoneId)
+        del MINIGAME_ZONES[zoneId]

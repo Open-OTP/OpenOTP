@@ -260,6 +260,7 @@ class AIRepository:
             dclass.receive_update_all_required(obj, dgi)
             self.doTable[obj.do_id] = obj
             self.storeLocation(do_id, 0, 0, parent_id, zone_id)
+            obj.announceGenerate()
         else:
             print('unknown object entry: %s' % dclass.name)
 

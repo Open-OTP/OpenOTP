@@ -120,6 +120,10 @@ class DistributedToonAI(DistributedPlayerAI):
     def getBankMoney(self):
         return self.bankMoney
 
+    def b_setBankMoney(self, money):
+        self.bankMoney = money
+        self.sendUpdate('setBankMoney', [money])
+
     def setMaxMoney(self, maxMoney):
         self.maxMoney = maxMoney
 
@@ -557,10 +561,6 @@ class DistributedToonAI(DistributedPlayerAI):
                 # Playground visgroup, ignore
                 return
             self.air.setInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0, self.parentId, visibles)
-
-    def announceGenerate(self):
-        # TEMP
-        self.b_setMoney(50)
 
 
 class Inventory:

@@ -4,7 +4,7 @@ from ai.toon.DistributedToonAI import Inventory
 
 from typing import List, Optional
 
-from . import createMinigame, Purchaser, PurchaseState, INVENTORY_PENDING, INVENTORY_DONE
+from . import createMinigame, Purchaser, PurchaseState, INVENTORY_PENDING, INVENTORY_DONE, incZoneRef, decZoneRef
 
 
 PURCHASE_COUNTDOWN_TIME = 120
@@ -66,6 +66,7 @@ class PurchaseManagerAI(DistributedObjectAI):
         return self.metagameRound
 
     def announceGenerate(self):
+        incZoneRef(self.zoneId)
         for purchaser in self.purchasers:
             avId = purchaser.avId
             if avId:
@@ -198,6 +199,10 @@ class PurchaseManagerAI(DistributedObjectAI):
 
         self.requestDelete()
         self.ignoreAll()
+
+    def delete(self):
+        decZoneRef(self.zoneId)
+        DistributedObjectAI.delete(self)
 
 
 class NewbiePurchaseManagerAI(PurchaseManagerAI):

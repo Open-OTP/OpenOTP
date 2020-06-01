@@ -7,7 +7,7 @@ from typing import Optional, List, Dict
 from enum import IntEnum
 
 
-from . import PurchaseState, Purchaser, INVENTORY_PENDING, PurchaseManagerAI
+from . import PurchaseState, Purchaser, INVENTORY_PENDING, PurchaseManagerAI, incZoneRef, decZoneRef
 
 
 class ParticipantState(IntEnum):
@@ -68,6 +68,7 @@ class DistributedMinigameAI(DistributedObjectAI, FSM):
         return self.startingVotes
 
     def announceGenerate(self):
+        incZoneRef(self.zoneId)
         self.demand('WaitForJoin')
 
     def enterWaitForJoin(self):
@@ -176,11 +177,12 @@ class DistributedMinigameAI(DistributedObjectAI, FSM):
                     state = PurchaseState.EXIT
 
                 score = int(self.scoreDict.get(participant, 0) + 0.5)
-                score = max(min(score, 255), 0)
+                score = max(min(score, 255), 1)
 
+                prevMoney = av.money
                 av.addMoney(score)
 
-                purchasers.append(Purchaser(participant, score, av.money, state=state, newbie=newbie,
+                purchasers.append(Purchaser(participant, score, prevMoney, state=state, newbie=newbie,
                                             inventoryState=INVENTORY_PENDING))
 
         while len(purchasers) < 4:
@@ -191,3 +193,7 @@ class DistributedMinigameAI(DistributedObjectAI, FSM):
             pm.generateWithRequired(self.zoneId)
 
         self.requestDelete()
+
+    def delete(self):
+        decZoneRef(self.zoneId)
+        DistributedObjectAI.delete(self)
