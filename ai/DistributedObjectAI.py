@@ -131,8 +131,11 @@ class DistributedObjectAI(DirectObject):
 
         self.air.requestDelete(self)
 
-    def uniqueName(self, name):
-        return f'{name}-{self.do_id}'
+    def uniqueName(self, name, useDoId=True):
+        if useDoId:
+            return f'{name}-{self.do_id}'
+        else:
+            return f'{name}-{id(self)}'
 
     def handleChildArrive(self, obj, zoneId):
         pass

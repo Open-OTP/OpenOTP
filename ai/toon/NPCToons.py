@@ -770,3 +770,84 @@ def createNpcsInZone(air, zoneId):
         return ()
 
     return tuple(createNPC(air, npcId, zoneId, posIndex=i) for i, npcId in enumerate(zone2NpcId[zoneId]))
+
+
+from ai.battle.BattleGlobals import *
+from ai import ToontownGlobals
+
+from typing import NamedTuple
+
+
+class SOSCard(NamedTuple):
+    track: Tracks
+    level: int
+    damage: int
+    rarity: int
+
+
+COGHQ_NPCFRIENDS = {
+    2001: SOSCard(Tracks.HEAL, level=5, damage=ToontownGlobals.MaxHpLimit, rarity=5),
+    2132: SOSCard(Tracks.HEAL, level=5, damage=70, rarity=4),
+    2121: SOSCard(Tracks.HEAL, level=5, damage=45, rarity=3),
+
+    2011: SOSCard(Tracks.TRAP, level=4, damage=180, rarity=5),
+    3007: SOSCard(Tracks.TRAP, level=4, damage=70, rarity=4),
+    1001: SOSCard(Tracks.TRAP, level=4, damage=50, rarity=3),
+
+    3112: SOSCard(Tracks.LURE, level=5, damage=0, rarity=5),
+    1323: SOSCard(Tracks.LURE, level=5, damage=0, rarity=3),
+    2308: SOSCard(Tracks.LURE, level=5, damage=0, rarity=3),
+
+    4119: SOSCard(Tracks.SOUND, level=5, damage=80, rarity=5),
+    4219: SOSCard(Tracks.SOUND, level=5, damage=50, rarity=4),
+    4115: SOSCard(Tracks.SOUND, level=5, damage=40, rarity=3),
+
+    1116: SOSCard(Tracks.DROP, level=5, damage=170, rarity=5),
+    2311: SOSCard(Tracks.DROP, level=5, damage=100, rarity=4),
+    4140: SOSCard(Tracks.DROP, level=5, damage=60, rarity=3),
+
+    3137: SOSCard(Tracks.NPC_COGS_MISS, 0, 0, rarity=4),
+    4327: SOSCard(Tracks.NPC_COGS_MISS, 0, 0, rarity=4),
+    4230: SOSCard(Tracks.NPC_COGS_MISS, 0, 0, rarity=4),
+
+    3135: SOSCard(Tracks.NPC_TOONS_HIT, 0, 0, rarity=4),
+    2208: SOSCard(Tracks.NPC_TOONS_HIT, 0, 0, rarity=4),
+    5124: SOSCard(Tracks.NPC_TOONS_HIT, 0, 0, rarity=4),
+
+    2003: SOSCard(Tracks.NPC_RESTOCK_GAGS, -1, 0, rarity=5),
+    
+    2126: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.HEAL, 0, rarity=3),
+    4007: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.TRAP, 0, rarity=3),
+    1315: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.LURE, 0, rarity=3),
+    5207: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.SQUIRT, 0, rarity=3),
+    3129: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.THROW, 0, rarity=3),
+    4125: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.SOUND, 0, rarity=3),
+    1329: SOSCard(Tracks.NPC_RESTOCK_GAGS, Tracks.DROP, 0, rarity=3)
+}
+
+FO_NPCFRIENDS = {
+    9310: SOSCard(Tracks.LURE, level=1, damage=0, rarity=0),
+    9311: SOSCard(Tracks.LURE, level=1, damage=0, rarity=1),
+    9312: SOSCard(Tracks.LURE, level=3, damage=0, rarity=2),
+
+    9307: SOSCard(Tracks.SOUND, level=1, damage=10, rarity=0),
+    9308: SOSCard(Tracks.SOUND, level=3, damage=20, rarity=1),
+    9309: SOSCard(Tracks.SOUND, level=4, damage=30, rarity=2),
+
+    9304: SOSCard(Tracks.DROP, level=1, damage=20, rarity=0),
+    9305: SOSCard(Tracks.DROP, level=2, damage=35, rarity=1),
+    9306: SOSCard(Tracks.DROP, level=3, damage=50, rarity=2),
+
+    9301: SOSCard(Tracks.HEAL, level=3, damage=10, rarity=0),
+    9302: SOSCard(Tracks.HEAL, level=3, damage=20, rarity=1),
+    9303: SOSCard(Tracks.HEAL, level=3, damage=30, rarity=2)
+}
+
+NPCFRIENDS = dict(COGHQ_NPCFRIENDS)
+NPCFRIENDS.update(FO_NPCFRIENDS)
+
+from typing import Optional
+
+
+def getSOSCard(npcId: int) -> Optional[SOSCard]:
+    return NPCFRIENDS.get(npcId)

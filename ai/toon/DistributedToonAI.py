@@ -3,6 +3,9 @@ from ai.DistributedSmoothNodeAI import DistributedSmoothNodeAI
 from otp.util import getPuppetChannel
 from dc.util import Datagram
 
+from typing import NamedTuple, List, Dict
+from ai.battle.BattleGlobals import *
+
 
 class DistributedAvatarAI(DistributedSmoothNodeAI):
     def __init__(self, air):
@@ -15,9 +18,6 @@ class DistributedAvatarAI(DistributedSmoothNodeAI):
 
     def getName(self):
         return self.name
-
-
-from typing import NamedTuple, List
 
 
 class FriendEntry(NamedTuple):
@@ -74,6 +74,9 @@ class DistributedPlayerAI(DistributedAvatarAI):
         self.friendsList.append(FriendEntry(friendId, trueFriend))
 
 
+MAX_NPC_FRIENDS_FLAG = 1 << 15
+
+
 class DistributedToonAI(DistributedPlayerAI):
     STREET_INTEREST_HANDLE = (1 << 15) + 1
 
@@ -88,8 +91,13 @@ class DistributedToonAI(DistributedPlayerAI):
         self.bankMoney = 0
         self.maxBankMoney = 1000
         self.trackAccess = [0, 0, 0, 0, 1, 1, 0]
+        self.trackBonusLevel = [-1, -1, -1, -1, -1, -1, -1]
         self.experience = Experience()
         self.inventory = Inventory()
+        self.maxNPCFriends = 8
+        self.npcFriends: Dict[int, int] = {}
+        self.pinkSlips = 0
+        self.battleId = 0
 
     def setDNAString(self, dnaString):
         self.dnaString = dnaString
@@ -183,8 +191,29 @@ class DistributedToonAI(DistributedPlayerAI):
         if sendTotal:
             self.d_setHp(clampedHp)
 
+    def takeDamage(self, hpLost, quietly=0, sendTotal=1):
+        if not quietly:
+            self.sendUpdate('takeDamage', [hpLost])
+        if hpLost > 0 and self.hp > 0:
+            self.hp = max(self.hp - hpLost, -1)
+            messenger.send(self.getGoneSadMessage())
+        self.hp = min(self.hp, self.maxHp)
+        if sendTotal:
+            self.d_setHp(self.hp)
+
+    @staticmethod
+    def getGoneSadMessageForAvId(avId):
+        return 'goneSad-%s' % avId
+
+    def getGoneSadMessage(self):
+        return self.getGoneSadMessageForAvId(self.do_id)
+
     def getBattleId(self):
-        return 0
+        return self.battleId
+
+    def b_setBattleId(self, battleId):
+        self.battleId = battleId
+        self.sendUpdate('setBattleId', [battleId])
 
     def setExperience(self, experience):
         self.experience = Experience.fromBytes(experience)
@@ -209,7 +238,10 @@ class DistributedToonAI(DistributedPlayerAI):
         return 0, 0
 
     def getTrackBonusLevel(self):
-        return [0, 0, 0, 0, 0, 0, 0]
+        return self.trackBonusLevel
+
+    def propHasOrganicBonus(self, track, level) -> bool:
+        return self.trackBonusLevel[track] >= level
 
     def setInventory(self, inventory):
         self.inventory = Inventory.fromBytes(inventory)
@@ -221,11 +253,22 @@ class DistributedToonAI(DistributedPlayerAI):
     def d_setInventory(self, blob):
         self.sendUpdate('setInventory', [blob])
 
+    def setMaxNPCFriends(self, maxNum):
+        if maxNum & MAX_NPC_FRIENDS_FLAG:
+            self.d_setSosPageFlag(1)
+            # Keep other bits.
+            maxNum &= MAX_NPC_FRIENDS_FLAG - 1
+
+        self.maxNPCFriends = maxNum
+
     def getMaxNPCFriends(self):
-        return 8
+        return self.maxNPCFriends
+
+    def d_setSosPageFlag(self, flag):
+        self.sendUpdate('setSosPageFlag', [flag])
 
     def getNPCFriendsDict(self):
-        return []
+        return list(self.npcFriends.items())
 
     def getDefaultShard(self):
         return 0
@@ -491,8 +534,14 @@ class DistributedToonAI(DistributedPlayerAI):
     def getGolfCourseBest(self):
         return [0] * 3
 
+    def setPinkSlips(self, pinkSlips):
+        self.pinkSlips = pinkSlips
+
     def getPinkSlips(self):
-        return 0
+        return self.pinkSlips
+
+    def d_setPinkSlips(self, pinkSlips):
+        self.sendUpdate('setPinkSlips', [pinkSlips])
 
     def getNametagStyle(self):
         return 0
@@ -509,97 +558,9 @@ class DistributedToonAI(DistributedPlayerAI):
                 return
             self.air.setInterest(channel, DistributedToonAI.STREET_INTEREST_HANDLE, 0, self.parentId, visibles)
 
-
-NUM_TRACKS = 7
-UBER_INDEX = 6
-NUM_PROPS = 7
-
-Levels = [
-    [0, 20, 200, 800, 2000, 6000, 10000],
-    [0, 20, 100, 800, 2000, 6000, 10000],
-    [0, 20, 100, 800, 2000, 6000, 10000],
-    [0, 40, 200, 1000, 2500, 7500, 10000],
-    [0, 10, 50, 400, 2000, 6000, 10000],
-    [0, 10, 50, 400, 2000, 6000, 10000],
-    [0, 20, 100, 500, 2000, 6000, 10000]
-]
-
-CarryLimits = (
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    ),
-    (
-        (5, 0, 0, 0, 0, 0, 0),
-        (7, 3, 0, 0, 0, 0, 0),
-        (10, 7, 3, 0, 0, 0, 0),
-        (15, 10, 7, 3, 0, 0, 0),
-        (15, 15, 10, 5, 3, 0, 0),
-        (20, 15, 15, 10, 5, 2, 0),
-        (20, 15, 15, 10, 5, 2, 1)),
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    ),
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    ),
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    ),
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    ),
-    (
-        (10, 0, 0, 0, 0, 0, 0),
-        (10, 5, 0, 0, 0, 0, 0),
-        (15, 10, 5, 0, 0, 0, 0),
-        (20, 15, 10, 5, 0, 0, 0),
-        (25, 20, 15, 10, 3, 0, 0),
-        (30, 25, 20, 15, 7, 3, 0),
-        (30, 25, 20, 15, 7, 3, 1)
-    )
-)
-
-regMaxSkill = 10000
-UberSkill = 500
-MaxSkill = UberSkill + regMaxSkill
-UnpaidMaxSkills = [Levels[0][1] - 1,
- Levels[1][1] - 1,
- Levels[2][1] - 1,
- Levels[3][1] - 1,
- Levels[4][4] - 1,
- Levels[5][4] - 1,
- Levels[6][1] - 1]
-ExperienceCap = 200
+    def announceGenerate(self):
+        # TEMP
+        self.b_setMoney(50)
 
 
 class Inventory:
@@ -619,6 +580,9 @@ class Inventory:
 
         return self.inventory[key]
 
+    def __setitem__(self, key, value):
+        self.inventory[key] = value
+
     def __iter__(self):
         yield from self.inventory
 
@@ -626,12 +590,14 @@ class Inventory:
     def totalProps(self):
         return sum(self.inventory)
 
-    def get(self, track, level):
-        return self[track * NUM_TRACKS + level]
+    def get(self, track: int, level: int) -> int:
+        return self[track * NUM_PROPS + level]
 
     def getMax(self, track, level):
         if self.toon.experience:
-            return CarryLimits[track][self.toon.experience.getExpLevel(track)][level]
+            gagTrack = getGagTrack(track)
+            expLevel = self.toon.experience.getExpLevel(track)
+            return gagTrack.carryLimits[expLevel][level]
         else:
             return 0
 
@@ -692,6 +658,10 @@ class Inventory:
 
         return True
 
+    def use(self, track: Union[Tracks, int], level: int):
+        i = track * NUM_PROPS + level
+        if self[i] > 0:
+            self[i] -= 1
 
     @staticmethod
     def fromBytes(data):
@@ -703,6 +673,12 @@ class Inventory:
 
     def makeNetString(self):
         return b''.join((prop.to_bytes(1, 'little') for prop in self.inventory))
+
+    def zero(self, killUber=False):
+        for i in range(NUM_TRACKS * NUM_PROPS):
+            if not killUber and (i + 1) % 7 == 0:
+                continue
+            self[i] = 0
 
 
 from ai import OTPGlobals
@@ -742,14 +718,15 @@ class Experience:
         if self.toon.getAccess() == OTPGlobals.AccessFull:
             maxExp = MaxSkill
         else:
-            maxExp = UnpaidMaxSkills[track]
+            maxExp = getGagTrack(track).unpaidMaxSkill
 
         self.experience[track] = min(current + amount, maxExp)
 
-    def getExpLevel(self, track):
+    def getExpLevel(self, track: int) -> int:
         xp = self[track]
-        for amount in Levels[track]:
+        xpLevels = getGagTrack(track).levels
+        for amount in xpLevels:
             if xp < amount:
-                return max(Levels[track].index(amount) - 1, 0)
+                return max(xpLevels.index(amount) - 1, 0)
         else:
-            return NUM_PROPS - 1
+            return len(xpLevels) - 1

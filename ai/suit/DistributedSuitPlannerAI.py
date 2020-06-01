@@ -42,7 +42,8 @@ from dna.objects import DNASuitPoint, SuitPointType, SuitLegType, FROM_SKY, SUIT
 import random
 from typing import Optional
 
-from ai.suit.DistributedSuitAI import DistributedSuitAI, SuitDNA, SuitDept, suitHeadTypes
+from ai.suit.DistributedSuitAI import DistributedSuitAI, SuitDNA
+from ai.suit.SuitGlobals import SuitDept, SuitHeads, pickFromFreqList
 
 
 UPKEEP_DELAY = 10
@@ -52,21 +53,6 @@ PATH_COLLISION_BUFFER = 5
 MIN_PATH_LEN = 40
 MAX_PATH_LEN = 300
 MAX_SUIT_TYPES = 6
-
-
-def pickFromFreqList(freqList):
-    randNum = random.randint(0, 99)
-    count = 0
-    index = 0
-    level = None
-    for f in freqList:
-        count = count + f
-        if randNum < count:
-            level = index
-            break
-        index = index + 1
-
-    return level
 
 
 class DistributedSuitPlannerAI(DistributedObjectAI):
@@ -157,9 +143,9 @@ class DistributedSuitPlannerAI(DistributedObjectAI):
         tiers = range(max(level - 4, 0), min(level, MAX_SUIT_TYPES))
         tier = random.choice(tiers)
         department = pickFromFreqList(self.info.deptChances)
-        name = suitHeadTypes[department * 8 + tier]
-        suit.dna = SuitDNA(type='s', name=name, dept=SuitDept(department).char)
-        suit.level = level
+        head = SuitHeads.at(department * 8 + tier)
+        suit.dna = SuitDNA(type='s', head=head, dept=SuitDept(department).char)
+        suit.actualLevel = level
         suit.initializePath()
         suit.generateWithRequired(suit.zoneId)
         suit.moveToNextLeg(None)
@@ -252,6 +238,17 @@ class DistributedSuitPlannerAI(DistributedObjectAI):
         self.suits.remove(suit)
         if suit.flyInSuit:
             self.numFlyInSuits -= 1
+
+    def requestBattle(self, zoneId, suit: DistributedSuitAI, toonId) -> bool:
+        from ai.battle import DistributedBattleAI
+        pos = self.zone2battlePos[zoneId]
+
+        battle = DistributedBattleAI(self.air, pos, suit, toonId, zoneId, finishCallback=self.__battleFinished)
+        battle.generateWithRequired(zoneId)
+        return True
+
+    def __battleFinished(self):
+        pass
 
 
 class BattleManagerAI:

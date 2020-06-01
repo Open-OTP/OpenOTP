@@ -58,7 +58,7 @@ class AIRepository:
 
         self.ourChannel = self.allocateChannel()
 
-        self.doTable: Dict[int, DistributedObjectAI] = {}
+        self.doTable: Dict[int, 'DistributedObjectAI'] = {}
         self.zoneTable: Dict[int, set] = {}
         self.parentTable: Dict[int, set] = {}
 
@@ -403,3 +403,5 @@ class AIRepository:
     def deallocateZone(self, zone):
         self.zoneAllocator.free(zone)
 
+    def getAvatarDisconnectReason(self, avId):
+        return self.timeManager.disconnectCodes.get(avId)

@@ -75,3 +75,5 @@ def isWelcomeValley(zone_id):
 def getHoodId(zone_id):
     return zone_id - zone_id % 1000
 
+
+MaxHpLimit = 137
