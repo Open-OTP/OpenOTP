@@ -696,7 +696,7 @@ class Experience:
         self.toon = toon
 
     def __getitem__(self, key):
-        if not type(key) == int:
+        if not type(key) == int and not type(key) == Tracks:
             raise IndexError
 
         return self.experience[key]

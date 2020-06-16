@@ -767,7 +767,7 @@ class BattleCalculator:
         attack = self.battle.toonAttacks[toonId]
         targets = self._createToonAtkTargetList(attack)
         hit, acc = self._calcToonAtkHit(attack, targets)
-        actualTrack, actualLevel = attack.actualTrack
+        actualTrack, actualLevel = attack.actualTrackLevel
         toon = simbase.air.doTable[toonId]
 
         if not hit and actualTrack != Tracks.HEAL:
@@ -1150,7 +1150,7 @@ class BattleCalculator:
             return 0
         else:
             suit = simbase.air.doTable[suitId]
-            name = suit.dna.name
+            name = suit.dna.head
             return -SuitAttributes[name].defenses[suit.level]
 
     def _isSuitLured(self, suitId: int, prevRound=False) -> bool:
