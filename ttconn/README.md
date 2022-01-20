@@ -1,1 +1,0 @@
-ttconn.exe ssl://6667:asasddsa.pem 127.0.0.1:6668
