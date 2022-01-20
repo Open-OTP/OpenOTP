@@ -13,34 +13,10 @@ from dc.util import Datagram
 from otp import config
 from otp.messagedirector import MDParticipant
 from otp.messagetypes import *
-from otp.networking import ToontownProtocol, DatagramFuture
+from otp.networking import OTPProtocol, DatagramFuture
 from otp.zone import *
 from otp.constants import *
 from otp.util import *
-
-
-class NamePart(IntEnum):
-    BOY_TITLE = 0
-    GIRL_TITLE = 1
-    NEUTRAL_TITLE = 2
-    BOY_FIRST = 3
-    GIRL_FIRST = 4
-    NEUTRAL_FIRST = 5
-    CAP_PREFIX = 6
-    LAST_PREFIX = 7
-    LAST_SUFFIX = 8
-
-
-@with_slots
-@dataclass
-class PotentialAvatar:
-    do_id: int
-    name: str
-    wish_name: str
-    approved_name: str
-    rejected_name: str
-    dna_string: str
-    index: int
 
 
 class ClientState(IntEnum):
@@ -87,10 +63,6 @@ class Interest:
         self.ai = False
         self.pending_objects: List[int] = []
 
-
-OTP_DO_ID_TOONTOWN = 4618
-
-
 @with_slots
 @dataclass
 class ObjectInfo:
@@ -115,9 +87,12 @@ class DISLAccount:
     whitelist_chat_enabled: bytes
 
 
-class ClientProtocol(ToontownProtocol, MDParticipant):
+class ClientProtocol(OTPProtocol, MDParticipant):
+    LOGIN_MSG_TYPE = CLIENT_LOGIN
+    FORWARDED_MSG_TYPES = [CLIENT_FRIEND_ONLINE, CLIENT_FRIEND_OFFLINE, CLIENT_GET_FRIEND_LIST_RESP]
+
     def __init__(self, service):
-        ToontownProtocol.__init__(self, service)
+        OTPProtocol.__init__(self, service)
         MDParticipant.__init__(self, service)
 
         self.state: int = ClientState.NEW
@@ -129,8 +104,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.visible_objects: Dict[int, ObjectInfo] = {}
         self.owned_objects: Dict[int, ObjectInfo] = {}
 
-        # TODO: make this configurable
-        self.uberdogs: List[int] = [OTP_DO_ID_FRIEND_MANAGER]
+        self.uberdogs: List[int] = []
 
         self.account: Union[DISLAccount, None] = None
         self.avatar_id: int = 0
@@ -156,7 +130,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
 
     def connection_lost(self, exc):
         self.service.log.debug(f'Connection lost to client {self.channel}')
-        ToontownProtocol.connection_lost(self, exc)
+        OTPProtocol.connection_lost(self, exc)
 
         if self.avatar_id:
             self.delete_avatar_ram()
@@ -164,7 +138,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         self.service.remove_participant(self)
 
     def connection_made(self, transport):
-        ToontownProtocol.connection_made(self, transport)
+        OTPProtocol.connection_made(self, transport)
         self.subscribe_channel(CLIENTS_CHANNEL)
 
     def delete_avatar_ram(self):
@@ -188,7 +162,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             return
 
         if self.state == ClientState.NEW:
-            if msgtype == CLIENT_LOGIN_TOONTOWN:
+            if msgtype == LOGIN_MSG_TYPE:
                 self.receive_login(dgi)
                 self.state = ClientState.AUTHENTICATED
             else:
@@ -284,15 +258,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_bytes(dgi.remaining_bytes())
         self.service.send_datagram(resp)
 
-        if field.name == 'setTalk':
-            # TODO: filtering
-            resp = Datagram()
-            resp.add_uint16(CLIENT_OBJECT_UPDATE_FIELD)
-            resp.add_uint32(do_id)
-            resp.add_uint16(field_number)
-            resp.add_bytes(dgi.remaining_bytes())
-            self.send_datagram(resp)
-
     def receive_client_location(self, dgi):
         do_id = dgi.get_uint32()
         parent_id = dgi.get_uint32()
@@ -311,321 +276,23 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         else:
             self.service.log.debug(f'Client {self.channel} tried setting location for unowned object {do_id}!')
 
-    def receive_get_friend_list(self, dgi):
-        self.service.log.debug(f'Friend list query received from {self.channel}')
-        error = 0
-
-        count = 0
-
-        # Friend Structure
-        # uint32 do_id
-        # string name
-        # string dna_string
-        # uint32 pet_id
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_GET_FRIEND_LIST_RESP)
-        resp.add_uint8(error)
-        resp.add_uint16(count)
-
-        self.send_datagram(resp)
+    def receive_create_avatar(self, dgi):
+        raise NotImplementedError
 
     def receive_set_avatar(self, dgi):
-        av_id = dgi.get_uint32()
+        raise NotImplementedError
 
-        self.service.log.debug(f'client {self.channel} is setting their avatar to {av_id}')
-
-        if not av_id:
-            if self.avatar_id:
-                # Client is logging out of their avatar.
-                self.delete_avatar_ram()
-                self.owned_objects.clear()
-                self.visible_objects.clear()
-
-                self.unsubscribe_channel(getClientSenderChannel(self.account.disl_id, self.avatar_id))
-                self.unsubscribe_channel(getPuppetChannel(self.avatar_id))
-                self.channel = getClientSenderChannel(self.account.disl_id, 0)
-                self.subscribe_channel(self.channel)
-
-                self.state = ClientState.AUTHENTICATED
-                self.avatar_id = 0
-                return
-            else:
-                # Do nothing.
-                return
-        elif self.state == ClientState.PLAY_GAME:
-            self.service.log.debug(f'Client {self.channel} tried to set their avatar {av_id} while avatar is already set to {self.avatar_id}.')
-            return
-
-        pot_av = None
-
-        for pa in self.potential_avatars:
-            if pa and pa.do_id == av_id:
-                pot_av = pa
-                break
-
-        if pot_av is None:
-            self.disconnect(ClientDisconnect.INTERNAL_ERROR, 'Could not find avatar on account.')
-            return
-
-        self.avatar_id = av_id
-        self.created_av_id = 0
-
-        self.state = ClientState.SETTING_AVATAR
-
-        self.channel = getClientSenderChannel(self.account.disl_id, self.avatar_id)
-        self.subscribe_channel(self.channel)
-        self.subscribe_channel(getPuppetChannel(self.avatar_id))
-
-        dclass = self.service.dc_file.namespace['DistributedToon']
-
-        access = 2 if self.account.access == b'FULL' else 1
-
-        # These Fields are REQUIRED but not stored in db.
-        other_fields = [
-            (dclass['setAccess'], (access,)),
-            (dclass['setPreviousAccess'], (access,)),
-            (dclass['setAsGM'], (False,)),
-            (dclass['setBattleId'], (0,))
-        ]
-
-        if pot_av.approved_name:
-            other_fields.append((dclass['setName'], (pot_av.approved_name,)))
-            pot_av.approved_name = ''
-
-        dg = Datagram()
-        dg.add_server_header([STATESERVERS_CHANNEL], self.channel, STATESERVER_OBJECT_CREATE_WITH_REQUIR_OTHER_CONTEXT)
-        dg.add_uint32(av_id)
-        dg.add_uint32(0)
-        dg.add_uint32(0)
-        dg.add_channel(self.channel)
-        dg.add_uint16(dclass.number)
-        dg.add_uint16(len(other_fields))
-
-        for f, arg in other_fields:
-            dg.add_uint16(f.number)
-            f.pack_value(dg, arg)
-
-        self.service.send_datagram(dg)
-
-    def receive_create_avatar(self, dgi):
-        _ = dgi.get_uint16()
-        dna = dgi.get_blob16()
-        pos = dgi.get_uint8()
-        self.service.log.debug(f'Client {self.channel} requesting avatar creation with dna {dna} and pos {pos}.')
-
-        if not 0 <= pos < 6 or self.potential_avatars[pos] is not None:
-            self.service.log.debug(f'Client {self.channel} tried creating avatar in invalid position.')
-            return
-
-        self.potential_avatar = PotentialAvatar(do_id=0, name='Toon', wish_name='', approved_name='',
-                                                      rejected_name='', dna_string=dna, index=pos)
-
-        dclass = self.service.dc_file.namespace['DistributedToon']
-
-        dg = Datagram()
-        dg.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_CREATE_STORED_OBJECT)
-        dg.add_uint32(0)
-        dg.add_uint16(dclass.number)
-        dg.add_uint32(self.account.disl_id)
-        dg.add_uint8(pos)
-        pos = dg.tell()
-        dg.add_uint16(0)
-
-        default_toon = dict(DEFAULT_TOON)
-        default_toon['setDNAString'] = (dna,)
-        default_toon['setDISLid'] = (self.account.disl_id,)
-        default_toon['WishName'] = ('',)
-        default_toon['WishNameState'] = ('CLOSED',)
-
-        count = 0
-        for field in dclass.inherited_fields:
-            if not isinstance(field, MolecularField) and field.is_db:
-                if field.name == 'DcObjectType':
-                    continue
-                dg.add_uint16(field.number)
-                field.pack_value(dg, default_toon[field.name])
-                count += 1
-
-        dg.seek(pos)
-        dg.add_uint16(count)
-
-        self.state = ClientState.CREATING_AVATAR
-
-        self.service.send_datagram(dg)
-
-        self.tasks.append(self.service.loop.create_task(self.created_avatar()))
-
-    async def created_avatar(self):
-        f = DatagramFuture(self.service.loop, DBSERVER_CREATE_STORED_OBJECT_RESP)
-        self.futures.append(f)
-        sender, dgi = await f
-        context = dgi.get_uint32()
-        return_code = dgi.get_uint8()
-        av_id = dgi.get_uint32()
-
-        av = self.potential_avatar
-        av.do_id = av_id
-        self.potential_avatars[av.index] = av
-        self.potential_avatar = None
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_CREATE_AVATAR_RESP)
-        resp.add_uint16(0)  # Context
-        resp.add_uint8(return_code)  # Return Code
-        resp.add_uint32(av_id)  # av_id
-        self.send_datagram(resp)
-
-        self.created_av_id = av_id
-
-        self.service.log.debug(f'New avatar {av_id} created for client {self.channel}.')
+    def receive_get_avatars(self, dgi):
+        raise NotImplementedError
 
     def receive_set_wishname(self, dgi):
-        av_id = dgi.get_uint32()
-        name = dgi.get_string16()
-
-        av = self.get_potential_avatar(av_id)
-
-        self.service.log.debug(f'Received wishname request from {self.channel} for avatar {av_id} for name "{name}".')
-
-        pending = name.encode('utf-8')
-        approved = b''
-        rejected = b''
-
-        failed = False
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_SET_WISHNAME_RESP)
-        resp.add_uint32(av_id)
-        resp.add_uint16(failed)
-        resp.add_string16(pending)
-        resp.add_string16(approved)
-        resp.add_string16(rejected)
-
-        self.send_datagram(resp)
-
-        if av_id and av:
-            dclass = self.service.dc_file.namespace['DistributedToon']
-            wishname_field = dclass['WishName']
-            wishname_state_field = dclass['WishNameState']
-
-            resp = Datagram()
-            resp.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_SET_STORED_VALUES)
-            resp.add_uint32(av_id)
-            resp.add_uint16(2)
-            resp.add_uint16(wishname_state_field.number)
-            wishname_state_field.pack_value(resp, ('PENDING',))
-            resp.add_uint16(wishname_field.number)
-            wishname_field.pack_value(resp, (name,))
-            self.service.send_datagram(resp)
+        raise NotImplementedError
 
     def receive_set_name_pattern(self, dgi):
-        av_id = dgi.get_uint32()
-
-        self.service.log.debug(f'Got name pattern request for av_id {av_id}.')
-
-        title_index, title_flag = dgi.get_int16(), dgi.get_int16()
-        first_index, first_flag = dgi.get_int16(), dgi.get_int16()
-        last_prefix_index, last_prefix_flag = dgi.get_int16(), dgi.get_int16()
-        last_suffix_index, last_suffix_flag = dgi.get_int16(), dgi.get_int16()
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_SET_NAME_PATTERN_ANSWER)
-        resp.add_uint32(av_id)
-
-        if av_id != self.created_av_id:
-            resp.add_uint8(1)
-            self.send_datagram(resp)
-            return
-
-        if first_index <= 0 and last_prefix_index <= 0 and last_suffix_index <= 0:
-            self.service.log.debug(f'Received request for empty name for {av_id}.')
-            resp.add_uint8(2)
-            self.send_datagram(resp)
-            return
-
-        if (last_prefix_index <= 0 <= last_suffix_index) or (last_suffix_index <= 0 <= last_prefix_index):
-            self.service.log.debug(f'Received request for invalid last name for {av_id}.')
-            resp.add_uint8(3)
-            self.send_datagram(resp)
-            return
-
-        try:
-            title = self.get_name_part(title_index, title_flag, {NamePart.BOY_TITLE, NamePart.GIRL_TITLE, NamePart.NEUTRAL_TITLE})
-            first = self.get_name_part(first_index, first_flag, {NamePart.BOY_FIRST, NamePart.GIRL_FIRST, NamePart.NEUTRAL_FIRST})
-            last_prefix = self.get_name_part(last_prefix_index, last_prefix_flag, {NamePart.CAP_PREFIX, NamePart.LAST_PREFIX})
-            last_suffix = self.get_name_part(last_suffix_index, last_suffix_flag, {NamePart.LAST_SUFFIX})
-        except KeyError as e:
-            resp.add_uint8(4)
-            self.send_datagram(resp)
-            self.service.log.debug(f'Received invalid index for name part. {e.args}')
-            return
-
-        name = f'{title}{" " if title else ""}{first}{" " if first else ""}{last_prefix}{last_suffix}'
-
-        for pot_av in self.potential_avatars:
-            if pot_av and pot_av.do_id == av_id:
-                pot_av.approved_name = name
-                break
-
-        resp.add_uint8(0)
-        self.send_datagram(resp)
-
-    def get_name_part(self, index, flag, categories):
-        if index >= 0:
-            if self.service.name_categories[index] not in categories:
-                self.service.log.debug(f'Received invalid index for pattern name: {index}. Expected categories: {categories}')
-                return
-
-            title = self.service.name_parts[index]
-            return title.capitalize() if flag else title
-        else:
-            return ''
+        raise NotImplementedError
 
     def receive_delete_avatar(self, dgi):
-        av_id = dgi.get_uint32()
-
-        av = self.get_potential_avatar(av_id)
-
-        if not av:
-            return
-
-        self.potential_avatars[av.index] = None
-        avatars = [pot_av.do_id if pot_av else 0 for pot_av in self.potential_avatars]
-        self.avs_deleted.append((av_id, int(time.time())))
-
-        field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET']
-        del_field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET_DEL']
-
-        dg = Datagram()
-        dg.add_server_header([DBSERVERS_CHANNEL], self.channel, DBSERVER_SET_STORED_VALUES)
-        dg.add_uint32(self.account.disl_id)
-        dg.add_uint16(2)
-        dg.add_uint16(field.number)
-        field.pack_value(dg, avatars)
-        dg.add_uint16(del_field.number)
-        del_field.pack_value(dg, self.avs_deleted)
-        self.service.send_datagram(dg)
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_DELETE_AVATAR_RESP)
-        resp.add_uint8(0)  # Return code
-
-        av_count = sum((1 if pot_av else 0 for pot_av in self.potential_avatars))
-        dg.add_uint16(av_count)
-
-        for pot_av in self.potential_avatars:
-            if not pot_av:
-                continue
-            dg.add_uint32(pot_av.do_id)
-            dg.add_string16(pot_av.name.encode('utf-8'))
-            dg.add_string16(pot_av.wish_name.encode('utf-8'))
-            dg.add_string16(pot_av.approved_name.encode('utf-8'))
-            dg.add_string16(pot_av.rejected_name.encode('utf-8'))
-            dg.add_string16(pot_av.dna_string.encode('utf-8'))
-            dg.add_uint8(pot_av.index)
-
-        self.send_datagram(resp)
+        raise NotImplementedError
 
     def receive_remove_interest(self, dgi, ai=False):
         handle = dgi.get_uint16()
@@ -683,119 +350,11 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             resp.add_uint32(context)
             self.send_datagram(resp)
 
-    def receive_get_avatars(self, dgi):
-        query = Datagram()
-        query.add_server_header([DBSERVERS_CHANNEL, ], self.channel, DBSERVER_ACCOUNT_QUERY)
-
-        disl_id = self.account.disl_id
-        query.add_uint32(disl_id)
-        field_number = self.service.avatars_field.number
-        query.add_uint16(field_number)
-        self.service.send_datagram(query)
-
-        self.tasks.append(self.service.loop.create_task(self.do_login()))
-
     async def do_login(self):
-        f = DatagramFuture(self.service.loop, DBSERVER_ACCOUNT_QUERY_RESP)
-        self.futures.append(f)
-        sender, dgi = await f
-
-        av_del_field = self.service.dc_file.namespace['Account']['ACCOUNT_AV_SET_DEL']
-        self.service.log.debug('Begin unpack of deleted avatars.')
-        try:
-            self.avs_deleted = av_del_field.unpack_value(dgi)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            return
-        self.service.log.debug(f'Avatars deleted list for {self.account.username}: {self.avs_deleted}')
-
-        pos = dgi.tell()
-
-        avatar_info = [None] * 6
-
-        for i in range(dgi.get_uint16()):
-            pot_av = PotentialAvatar(do_id=dgi.get_uint32(), name=dgi.get_string16(), wish_name=dgi.get_string16(),
-                                     approved_name=dgi.get_string16(), rejected_name=dgi.get_string16(),
-                                     dna_string=dgi.get_blob16(), index=dgi.get_uint8())
-
-            avatar_info[pot_av.index] = pot_av
-
-        self.potential_avatars = avatar_info
-
-        self.state = ClientState.AVATAR_CHOOSER
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_GET_AVATARS_RESP)
-        dgi.seek(pos)
-        resp.add_uint8(0)  # Return code
-        resp.add_bytes(dgi.remaining_bytes())
-        self.send_datagram(resp)
+        raise NotImplementedError
 
     def receive_login(self, dgi):
-        play_token = dgi.get_string16()
-        server_version = dgi.get_string16()
-        hash_val = dgi.get_uint32()
-        want_magic_words = dgi.get_string16()
-
-        self.service.log.debug(f'play_token:{play_token}, server_version:{server_version}, hash_val:{hash_val}, '
-                               f'want_magic_words:{want_magic_words}')
-
-        try:
-            play_token = bytes.fromhex(play_token)
-            nonce, tag, play_token = play_token[:16], play_token[16:32], play_token[32:]
-            cipher = AES.new(CLIENTAGENT_SECRET, AES.MODE_EAX, nonce)
-            data = cipher.decrypt_and_verify(play_token, tag)
-            self.service.log.debug(f'Login token data:{data}')
-            data = json.loads(data)
-            for key in list(data.keys()):
-                value = data[key]
-                if type(value) == str:
-                    data[key] = value.encode('utf-8')
-            self.account = DISLAccount(**data)
-        except ValueError as e:
-            self.disconnect(ClientDisconnect.LOGIN_ERROR, 'Invalid token')
-            return
-
-        self.channel = getClientSenderChannel(self.account.disl_id, 0)
-        self.subscribe_channel(self.channel)
-        self.subscribe_channel(getAccountChannel(self.account.disl_id))
-
-        resp = Datagram()
-        resp.add_uint16(CLIENT_LOGIN_TOONTOWN_RESP)
-
-        return_code = 0  # -13 == period expired
-        resp.add_uint8(return_code)
-
-        error_string = b'' # 'Bad DC Version Compare'
-        resp.add_string16(error_string)
-
-        resp.add_uint32(self.account.disl_id)
-        resp.add_string16(self.account.username)
-        account_name_approved = True
-        resp.add_uint8(account_name_approved)
-        resp.add_string16(self.account.whitelist_chat_enabled)
-        resp.add_string16(self.account.create_friends_with_chat)
-        resp.add_string16(self.account.chat_code_creation_rule)
-
-        t = time.time() * 10e6
-        usecs = int(t % 10e6)
-        secs = int(t / 10e6)
-        resp.add_uint32(secs)
-        resp.add_uint32(usecs)
-
-        resp.add_string16(self.account.access)
-        resp.add_string16(self.account.whitelist_chat_enabled)
-
-        last_logged_in = time.strftime('%c')  # time.strftime('%c')
-        resp.add_string16(last_logged_in.encode('utf-8'))
-
-        account_days = 0
-        resp.add_int32(account_days)
-        resp.add_string16(self.account.account_type)
-        resp.add_string16(self.account.username)
-
-        self.send_datagram(resp)
+        raise NotImplementedError
 
     def receive_add_interest(self, dgi, ai=False):
         handle = dgi.get_uint16()
@@ -940,7 +499,7 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
             self.receive_add_interest(dgi, ai=True)
         elif msgtype == CLIENT_AGENT_REMOVE_INTEREST:
             self.receive_remove_interest(dgi, ai=True)
-        elif msgtype in {CLIENT_FRIEND_ONLINE, CLIENT_FRIEND_OFFLINE, CLIENT_GET_FRIEND_LIST_RESP}:
+        elif msgtype in FORWARDED_MSG_TYPES:
             dg = Datagram()
             dg.add_uint16(msgtype)
             dg.add_bytes(dgi.remaining_bytes())
@@ -1144,11 +703,6 @@ class ClientProtocol(ToontownProtocol, MDParticipant):
         resp.add_uint32(do_id)
         resp.add_bytes(dgi.remaining_bytes())
         self.send_datagram(resp)
-
-    def get_potential_avatar(self, av_id):
-        for pot_av in self.potential_avatars:
-            if pot_av and pot_av.do_id == av_id:
-                return pot_av
 
     def send_go_get_lost(self, booted_index, booted_text):
         resp = Datagram()

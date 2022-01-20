@@ -120,29 +120,6 @@ class DBServer(DownstreamMessageDirector):
         dg.add_uint32(do_id)
         self.send_datagram(dg)
 
-    async def create_toon(self, sender, context, dclass, disl_id, pos, fields):
-        try:
-            do_id = await self.backend.create_object(dclass, fields)
-            account = await self.backend.query_object_fields(disl_id, ['ACCOUNT_AV_SET'], 'Account')
-            temp = Datagram()
-            temp.add_bytes(account['ACCOUNT_AV_SET'])
-            av_set = self.dc.namespace['Account']['ACCOUNT_AV_SET'].unpack_value(temp.iterator())
-            print(do_id, disl_id, pos, av_set)
-            av_set[pos] = do_id
-            temp.seek(0)
-            self.dc.namespace['Account']['ACCOUNT_AV_SET'].pack_value(temp, av_set)
-            await self.backend.set_field(disl_id, 'ACCOUNT_AV_SET', temp.bytes(), 'Account')
-        except OTPCreateFailed as e:
-            print('creation failed', e)
-            do_id = 0
-
-        dg = Datagram()
-        dg.add_server_header([sender], DBSERVERS_CHANNEL, DBSERVER_CREATE_STORED_OBJECT_RESP)
-        dg.add_uint32(context)
-        dg.add_uint8(do_id == 0)
-        dg.add_uint32(do_id)
-        self.send_datagram(dg)
-
     async def get_stored_values(self, sender, context, do_id, fields):
         try:
             field_dict = await self.backend.query_object_fields(do_id, [field.name for field in fields])
@@ -183,55 +160,6 @@ class DBServer(DownstreamMessageDirector):
 
     def on_upstream_connect(self):
         self.subscribe_channel(self._client, DBSERVERS_CHANNEL)
-
-    async def query_account(self, sender, do_id):
-        dclass = self.dc.namespace['Account']
-        toon_dclass = self.dc.namespace['DistributedToon']
-        field_dict = await self.backend.query_object_all(do_id, dclass.name)
-
-        temp = Datagram()
-        temp.add_bytes(field_dict['ACCOUNT_AV_SET'])
-        av_ids = dclass['ACCOUNT_AV_SET'].unpack_value(temp.iterator())
-
-        dg = Datagram()
-        dg.add_server_header([sender], DBSERVERS_CHANNEL, DBSERVER_ACCOUNT_QUERY_RESP)
-        dg.add_bytes(field_dict['ACCOUNT_AV_SET_DEL'])
-        av_count = sum((1 if av_id else 0 for av_id in av_ids))
-        self.log.debug(f'Account query for {do_id} from {sender}: {field_dict}')
-        dg.add_uint16(av_count)  # Av count
-        for av_id in av_ids:
-            if not av_id:
-                continue
-            toon_fields = await self.backend.query_object_fields(av_id, ['setName', 'WishNameState', 'WishName', 'setDNAString'], 'DistributedToon')
-
-            wish_name = toon_fields['WishName']
-
-            temp = Datagram()
-            temp.add_bytes(toon_fields['WishNameState'])
-            name_state = toon_dclass['WishNameState'].unpack_value(temp.iterator())
-
-            dg.add_uint32(av_id)
-            dg.add_bytes(toon_fields['setName'])
-
-            pending_name = b'\x00\x00'
-            approved_name = b'\x00\x00'
-            rejected_name = b'\x00\x00'
-
-            if name_state == 'APPROVED':
-                approved_name = wish_name
-            elif name_state == 'REJECTED':
-                rejected_name = wish_name
-            else:
-                pending_name = wish_name
-
-            dg.add_bytes(pending_name)
-            dg.add_bytes(approved_name)
-            dg.add_bytes(rejected_name)
-            dg.add_bytes(toon_fields['setDNAString'])
-            dg.add_uint8(av_ids.index(av_id))
-
-        self.send_datagram(dg)
-
 
 async def main():
     loop = asyncio.get_running_loop()

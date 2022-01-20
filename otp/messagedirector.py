@@ -1,5 +1,5 @@
 from otp import config
-from otp.networking import ToontownProtocol, MDParticipant, Service, UpstreamServer, DownstreamClient
+from otp.networking import OTPProtocol, MDParticipant, Service, UpstreamServer, DownstreamClient
 from dc.messagetypes import *
 from dc.util import Datagram
 from asyncio import Queue
@@ -10,18 +10,18 @@ import par
 from typing import Dict, Set, List
 
 
-class MDProtocol(ToontownProtocol, MDParticipant):
+class MDProtocol(OTPProtocol, MDParticipant):
     def __init__(self, service):
-        ToontownProtocol.__init__(self, service)
+        OTPProtocol.__init__(self, service)
         MDParticipant.__init__(self, service)
 
         self.post_removes: List[Datagram] = []
 
     def connection_made(self, transport):
-        ToontownProtocol.connection_made(self, transport)
+        OTPProtocol.connection_made(self, transport)
 
     def connection_lost(self, exc):
-        ToontownProtocol.connection_lost(self, exc)
+        OTPProtocol.connection_lost(self, exc)
         self.service.remove_participant(self)
         self.post_remove()
 
@@ -150,17 +150,17 @@ class MasterMessageDirector(MessageDirector, UpstreamServer):
         await self.listen(config['MessageDirector.HOST'], config['MessageDirector.PORT'])
 
 
-class MDUpstreamProtocol(ToontownProtocol, MDParticipant):
+class MDUpstreamProtocol(OTPProtocol, MDParticipant):
     def __init__(self, service):
-        ToontownProtocol.__init__(self, service)
+        OTPProtocol.__init__(self, service)
         MDParticipant.__init__(self, service)
 
     def connection_made(self, transport):
-        ToontownProtocol.connection_made(self, transport)
+        OTPProtocol.connection_made(self, transport)
         self.service.on_upstream_connect()
 
     def connection_lost(self, exc):
-        ToontownProtocol.connection_lost(self, exc)
+        OTPProtocol.connection_lost(self, exc)
         raise Exception('lost upsteam connection!', exc)
 
     def subscribe_channel(self, channel):

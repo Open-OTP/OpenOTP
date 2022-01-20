@@ -60,6 +60,7 @@ class UberdogProtocol(MDUpstreamProtocol):
 class Uberdog(DownstreamMessageDirector):
     upstream_protocol = UberdogProtocol
     GLOBAL_ID = None
+    GAME_ID = OTP_DO_ID_COMMON
 
     def __init__(self, loop):
         DownstreamMessageDirector.__init__(self, loop)
@@ -76,7 +77,7 @@ class Uberdog(DownstreamMessageDirector):
         self.subscribe_channel(self._client, self.GLOBAL_ID)
         self.log.debug('Uberdog online')
 
-        dg = self.dclass.ai_format_generate(self, self.GLOBAL_ID, OTP_DO_ID_TOONTOWN, OTP_ZONE_ID_MANAGEMENT,
+        dg = self.dclass.ai_format_generate(self, self.GLOBAL_ID, self.GAME_ID, OTP_ZONE_ID_MANAGEMENT,
                                             STATESERVERS_CHANNEL, self.GLOBAL_ID, optional_fields=None)
         self.send_datagram(dg)
 
@@ -119,83 +120,3 @@ class Uberdog(DownstreamMessageDirector):
 
         return parent_id, zone_id
 
-
-class CentralLoggerUD(Uberdog):
-    GLOBAL_ID = OTP_DO_ID_CENTRAL_LOGGER
-
-    def sendMessage(self, category, event_str, target_disl_id, target_do_id):
-        self.log.debug(f'category:{category}, disl_id: {target_disl_id}, do_id: {target_do_id}, event::{event_str}')
-
-
-CANCELLED = 1
-INACTIVE = 0
-FRIEND_QUERY = 1
-FRIEND_CONSIDERING = 2
-NO = 0
-YES = 1
-
-
-class FriendRequest:
-    __slots__ = 'avId', 'requestedId', 'state'
-
-    def __init__(self, avId, requestedId, state):
-        self.avId = avId
-        self.requestedId = requestedId
-        self.state = state
-
-    @property
-    def cancelled(self):
-        return self.state == CANCELLED
-
-
-class FriendManagerUD(Uberdog):
-    GLOBAL_ID = OTP_DO_ID_FRIEND_MANAGER
-
-    def __init__(self, loop):
-        Uberdog.__init__(self, loop)
-        self._context = 0
-        self.requests = {}
-
-    def new_context(self):
-        self._context = (self._context + 1) & 0xFFFFFFFF
-        return self._context
-
-    def friendQuery(self, requested):
-        pass
-
-    def cancelFriendQuery(self, todo0):
-        pass
-
-    def inviteeFriendConsidering(self, todo0):
-        pass
-
-    def inviteeFriendResponse(self, todo0):
-        pass
-
-    def inviteeAcknowledgeCancel(self, todo0):
-        pass
-
-    def requestSecret(self, todo0):
-        pass
-
-    def submitSecret(self, todo0):
-        pass
-
-
-async def main():
-    import builtins
-    builtins.dc = parse_dc_file('toon.dc')
-
-    loop = asyncio.get_running_loop()
-    central_logger = CentralLoggerUD(loop)
-    friend_manager = FriendManagerUD(loop)
-
-    uberdog_tasks = [
-        asyncio.create_task(central_logger.run()),
-        asyncio.create_task(friend_manager.run()),
-    ]
-
-    await asyncio.gather(*uberdog_tasks)
-
-if __name__ == '__main__':
-    asyncio.run(main())

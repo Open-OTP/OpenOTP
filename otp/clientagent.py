@@ -43,21 +43,6 @@ class ClientAgent(DownstreamMessageDirector, UpstreamServer, ChannelAllocator):
         self.name_parts = {}
         self.name_categories = {}
 
-        with open('NameMasterEnglish.txt', 'r') as f:
-            for line in f:
-                if line[0] == '#':
-                    continue
-
-                if line.endswith('\r\n'):
-                    line = line[:-2]
-                elif line.endswith('\n'):
-                    line = line[:-1]
-
-                index, category, name = line.split('*')
-                index, category = int(index), int(category)
-                self.name_parts[index] = name
-                self.name_categories[index] = category
-
         self.listen_task = None
 
     def _on_exception(self, loop, context):
@@ -84,6 +69,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main(), debug=True)
-
-#Shared ciphers:EDH-RSA-DES-CBC3-SHA:EDH-DSS-DES-CBC3-SHA:DES-CBC3-SHA:IDEA-CBC-SHA:RC4-SHA:RC4-MD5
-#CIPHER is EDH-RSA-DES-CBC3-SHA

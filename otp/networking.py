@@ -93,7 +93,7 @@ class DatagramFuture(Future):
         self.context = context
 
 
-class ToontownProtocol(asyncio.Protocol):
+class OTPProtocol(asyncio.Protocol):
     def __init__(self, service):
         asyncio.Protocol.__init__(self)
         self.service = service
