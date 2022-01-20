@@ -1,6 +1,6 @@
 [General]
 UVLOOP=1
-LOGIN_SECRET=4e298f676a1a7e5c1f1ea534c9d9f583
+LOGIN_SECRET=change_this
 
 [MessageDirector]
 HOST=127.0.0.1
@@ -21,14 +21,8 @@ PORT=46669
 HOST=127.0.0.1
 PORT=46670
 
-[WebServer]
-CONTENT_DIR=web/content/
-WRITE_PATCH_FILES=0
-HOST=127.0.0.1
-PORT=8080
-
 [SQL]
 HOST=127.0.0.1
 PORT=3306
-USER=toontown
-PASSWORD=7i8k!aQ6PFj1
+USER=otp_server
+PASSWORD=change_this
